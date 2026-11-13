@@ -42,7 +42,7 @@ const COLORS = ['#E2553D', '#2A7DE1', '#2BA36B', '#E8A317', '#8E5BD8', '#E5689A'
 const CODE_CH = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const newCode = () => { let c; do { c = ''; for (let i = 0; i < 5; i++) c += CODE_CH[Math.floor(Math.random() * CODE_CH.length)]; } while (rooms.has(c)); return c; };
 const newId = () => Math.random().toString(36).slice(2, 10);
-const POINTS = [0, 5, 3, 3, 1, 1, 1];      // المركز ← النقاط
+const POINTS = [0, 5, 4, 3, 2, 1];      // المركز ← النقاط
 
 function cleanName(s, max = 24) { return String(s || '').replace(/[<>]/g, '').trim().slice(0, max); }
 function cleanPhoto(s) { s = String(s || ''); return /^data:image\/(jpeg|png|webp);base64,/.test(s) && s.length < 450000 ? s : ''; }

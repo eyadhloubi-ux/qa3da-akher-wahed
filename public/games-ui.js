@@ -37,7 +37,7 @@ const GUI = (() => {
     const k = j.querySelector('i');
     let act = false, last = 0, v = [0, 0], sentV = [9, 9];
     const send = (force) => { const t = performance.now(); if (!force && t - last < 70) return; if (Math.abs(v[0] - sentV[0]) < 0.05 && Math.abs(v[1] - sentV[1]) < 0.05 && !force) return; last = t; sentV = v.slice(); A.send({ a: 'mv', v: v.map((x) => Math.round(x * 100) / 100) }); };
-    const setFrom = (e) => { const r = j.getBoundingClientRect(); let x = (e.clientX - r.left - r.width / 2) / (r.width / 2), y = (e.clientY - r.top - r.height / 2) / (r.height / 2); const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } v = [x, y]; k.style.transform = `translate(calc(-50% + ${x * r.width * 0.32}px), calc(-50% + ${y * r.height * 0.32}px))`; send(); };
+    const setFrom = (e) => { const r = j.getBoundingClientRect(); let x = (e.clientX - r.left - r.width / 2) / (r.width / 2), y = (e.clientY - r.top - r.height / 2) / (r.height / 2); const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } const g = Math.min(1, Math.hypot(x, y) / 0.6) / (Math.hypot(x, y) || 1); v = [x * g, y * g]; k.style.transform = `translate(calc(-50% + ${x * r.width * 0.32}px), calc(-50% + ${y * r.height * 0.32}px))`; send(); };
     j.addEventListener('pointerdown', (e) => { e.preventDefault(); act = true; try { j.setPointerCapture(e.pointerId); } catch (x) {} setFrom(e); });
     j.addEventListener('pointermove', (e) => { if (act) setFrom(e); });
     const end = () => { act = false; v = [0, 0]; k.style.transform = 'translate(-50%,-50%)'; send(true); };
@@ -179,38 +179,31 @@ const GUI = (() => {
   function pillowAt(c, x, y, s, rot) { c.save(); c.translate(x, y); c.rotate(rot); c.fillStyle = '#F4F1E8'; c.strokeStyle = css().line; c.lineWidth = 2; D.rr(c, -s * 0.9, -s * 0.55, s * 1.8, s * 1.1, s * 0.45); c.fill(); c.stroke(); c.strokeStyle = css().acc; c.lineWidth = 1.5; c.beginPath(); c.moveTo(-s * 0.5, 0); c.lineTo(s * 0.5, 0); c.stroke(); c.restore(); }
   const pillow = {
     controls(el) {
-      this.bs = modeBtns(el, { v: 'atk', label: 'اضرب 🛋️', sub: 'ضربة كل ثانية لحالها' }, { v: 'blk', label: 'صدّ 🛡️', sub: 'نَفَسك 3 ثواني' });
+      el.innerHTML = ''; this.j = joystick(el);
+      this.b = btn(el, 'اضرب 🛋️', 'لفّ عليه وانزل فيه', '', { down: () => { A.send({ a: 'atk' }); vib(12); } });
     },
-    update(g) {
-      const m = g.matches && g.matches.find((x) => x.active.includes(A.me));
-      if (!m || !m.st) return; const s = m.st[A.me]; if (!s) return;
-      setMode(this.bs, s.mode, 'blk', s);
-    },
+    cleanup() { this.j && this.j._cleanup && this.j._cleanup(); },
+    update(g) { const s = g.st && g.st[A.me]; if (!s || !this.b) return; const now = A.sNow(); setCd(this.b, s.cd > now ? Math.min(1, (s.cd - now) / 2000) : 0); },
     draw(c, w, h, g) {
-      D.hara(c, w, h, {}); const now = A.sNow();
-      for (const r of layout(g.matches, w, h)) {
-        panel(c, r); const m = r.m;
-        const s = Math.min(r.w / 13, r.h / 8.5, r.big ? 28 : 14);
-        const cx = r.x + r.w / 2, gy = r.y + r.h * 0.72;
-        const pos = m.ps.length === 2 ? [[cx - r.w * 0.22, gy], [cx + r.w * 0.22, gy]] : [[cx - r.w * 0.3, gy], [cx, gy - r.h * 0.18], [cx + r.w * 0.3, gy]];
-        m.ps.forEach((p, i) => {
-          const st = m.st[p]; let [x, y] = pos[i];
-          const out = !m.active.includes(p) && !(m.done && m.winner === p);
-          const flip = x <= cx ? 1 : -1;
-          if (st.hit > now) x += Math.sin(now / 25) * s * 0.25;
-          stool(c, x, y, s);
-          let pose = 'idle'; if (out) pose = 'fall'; else if (m.done) pose = 'cheer'; else if (st.mode === 'blk') pose = 'block'; else if (st.wind) pose = 'swing'; else pose = 'smash';
-          const ch = D.char(c, x, y - s * 0.55, s, P(p), { pose, flip, me: isMe(p), label: false, seed: i, alpha: out ? 0.5 : 1 });
-          if (!out) pillowAt(c, ch.hands[0][0], ch.hands[0][1] - (pose === 'swing' ? s * 0.2 : 0), s * 0.7, pose === 'block' ? 1.5 : pose === 'swing' ? -0.6 : 0.4 * flip);
-          D.hearts(c, x, ch.top[1] - s * 0.6, st.hp, 3, Math.max(8, s * 0.5));
-          if (st.blocked > now) D.sticker(c, 'صدّها!', x, ch.top[1] - s * 1.5, Math.max(10, s * 0.5), css().ok, '#fff', 0.1);
-          if (st.hit > now) D.sticker(c, 'طاخ!', x, ch.top[1] - s * 1.5, Math.max(10, s * 0.5), css().bad, '#fff', -0.1);
-          if (r.big) D.txt(c, P(p).name.slice(0, 10), x, y + s * 1.55, 13, { f: 'Plex', w: 700 });
-        });
-        matchTimer(c, r, m, g); doneMark(c, r, m);
-        if (m.sudden && !m.done) D.sticker(c, 'الضربة القاضية', cx, r.y + r.h * 0.12, r.big ? 16 : 10, css().acc, '#fff', 0);
+      D.hara(c, w, h, {}); const F = field(w, h), now = A.sNow();
+      const s = Math.max(7, Math.min(w, h) / 34);
+      // حدود الساحة (بتضيق بعد دقيقة)
+      if (g.b > 0.031) { const [x0, y0] = toS(F, [g.b, g.b + 0.02]), [x1, y1] = toS(F, [1 - g.b, 1 - g.b]); c.save(); c.fillStyle = 'rgba(0,0,0,.28)'; c.beginPath(); c.rect(0, 0, w, h); c.rect(x0, y0, x1 - x0, y1 - y0); c.fill('evenodd'); c.strokeStyle = css().bad; c.lineWidth = 4; c.setLineDash([12, 8]); c.strokeRect(x0, y0, x1 - x0, y1 - y0); c.restore(); }
+      const ids = Object.keys(g.pos).filter((id) => g.alive.includes(id) || (g.flash && g.flash.ids.includes(id) && now - g.flash.at < 1500));
+      ids.sort((a, b) => g.pos[a][1] - g.pos[b][1]);
+      for (const id of ids) {
+        const st = g.st[id]; const q = smooth('pl' + id, g.pos[id][0], g.pos[id][1]); const [x, y] = toS(F, q);
+        const prev = sm['plv' + id] || [x, y]; const moving = Math.hypot(prev[0] - x, prev[1] - y) > 0.4; sm['plv' + id] = [x, y];
+        const dead = !g.alive.includes(id); const flip = st.face[0] < -0.1 ? -1 : 1;
+        const sw = now - st.swing < 320;
+        if (st.hit > now - 400) { c.save(); c.translate(Math.sin(now / 20) * 3, 0); }
+        const ch = D.char(c, x, y, s, P(id), { pose: dead ? 'fall' : sw ? 'swing' : moving ? 'run' : 'idle', flip, me: isMe(id), label: isMe(id) || ids.length <= 8, seed: id.charCodeAt(0), alpha: dead ? 0.5 : 1 });
+        if (!dead) pillowAt(c, x + flip * s * 1.1, ch.hands[0][1] - (sw ? s * 0.6 : 0), s * 0.7, sw ? -0.9 * flip : 0.4 * flip);
+        if (!dead) D.hearts(c, x, ch.top[1] - s * 0.55, st.hp, 3, Math.max(7, s * 0.45));
+        if (st.hit > now - 400) { c.restore(); D.sticker(c, 'طاخ!', x, ch.top[1] - s * 1.5, Math.max(10, s * 0.55), css().bad, '#fff', -0.1); }
+        if (isMe(id) && st.cd > now && !dead) D.txt(c, ((st.cd - now) / 1000).toFixed(1), x, y + s * 2.3, 12, { f: 'Plex', w: 700, color: css().muted });
       }
-      bracketHeader(c, w, g);
+      if (!g.go) D.sticker(c, 'استعدّوا…', w / 2, h * 0.15, 26, css().acc2, '#1E1B18', -0.04);
     },
   };
 
@@ -268,8 +261,16 @@ const GUI = (() => {
   function sofa(c, x, y, s, col) { c.fillStyle = col; c.strokeStyle = css().line; c.lineWidth = 2.5; D.rr(c, x - s * 1.6, y - s * 1.5, s * 3.2, s * 1.5, s * 0.4); c.fill(); c.stroke(); D.rr(c, x - s * 1.9, y - s * 1.8, s * 0.6, s * 1.8, s * 0.3); c.fill(); c.stroke(); D.rr(c, x + s * 1.3, y - s * 1.8, s * 0.6, s * 1.8, s * 0.3); c.fill(); c.stroke(); }
   function slipperAt(c, x, y, s, rot) { c.save(); c.translate(x, y); c.rotate(rot); c.fillStyle = css().acc3; c.strokeStyle = css().line; c.lineWidth = 2; c.beginPath(); c.ellipse(0, 0, s * 0.8, s * 0.38, 0, 0, 7); c.fill(); c.stroke(); c.strokeStyle = '#fff'; c.lineWidth = 2.5; c.beginPath(); c.arc(-s * 0.1, 0, s * 0.25, -1.2, 1.2); c.stroke(); c.restore(); }
   const slipper = {
-    controls(el) { this.bs = modeBtns(el, { v: 'throw', label: 'شلّف 🩴', sub: 'شحاطة كل ثانية لحالها' }, { v: 'hide', label: 'تخبّى', sub: 'نَفَسك 3 ثواني' }); },
-    update(g) { const m = g.matches && g.matches.find((x) => x.active.includes(A.me)); if (!m || !m.st || !m.st[A.me]) return; setMode(this.bs, m.st[A.me].mode, 'hide', m.st[A.me]); },
+    controls(el) {
+      el.innerHTML = '';
+      this.info = note(el, '');
+      this.b = btn(el, 'اكبس لتتخبّى 🛋️', 'شيل إصبعك… بتشلّف شحاطة كل ثانية', 'alt', { down: () => { A.send({ a: 'hide', on: true }); vib(6); }, up: () => A.send({ a: 'hide', on: false }) });
+    },
+    update(g) {
+      const m = g.matches && g.matches.find((x) => x.ps.includes(A.me)); if (!m || !m.st || !m.st[A.me]) return; const s = m.st[A.me];
+      this.b.firstChild.textContent = s.hide ? 'متخبّي 🛋️' : s.left > 0 ? 'عم تشلّف 🩴' : 'خلصوا شحاطاتك';
+      this.info.textContent = `معك ${s.left} شحاطات · صبت ${s.dealt}`;
+    },
     draw(c, w, h, g) {
       D.hara(c, w, h, { wall: true }); const now = A.sNow();
       for (const r of layout(g.matches, w, h)) {
@@ -282,10 +283,10 @@ const GUI = (() => {
         m.ps.forEach((p, i) => {
           const st = m.st[p]; const [x, y] = pos[i];
           const out = !m.active.includes(p) && !(m.done && m.winner === p);
-          const hide = st.mode === 'hide';
-          const ch = D.char(c, x, y - s * 0.6, s, P(p), { pose: out ? 'fall' : m.done ? 'cheer' : hide ? 'duck' : st.next - now > 700 ? 'throw' : 'idle', k: 1, flip: x <= cx ? 1 : -1, me: isMe(p), seed: i, alpha: out ? 0.5 : 1 });
+          const hide = st.hide;
+          const ch = D.char(c, x, y - s * 0.6, s, P(p), { pose: out ? 'fall' : m.done ? 'cheer' : hide ? 'duck' : st.left > 0 && st.next - now > 700 ? 'throw' : 'idle', k: 1, flip: x <= cx ? 1 : -1, me: isMe(p), seed: i, alpha: out ? 0.5 : 1 });
           sofa(c, x, y, s, P(p).color);
-          D.hearts(c, x, y + s * 0.6, 3 - st.hits, 3, Math.max(8, s * 0.48));
+          D.txt(c, `🎯 ${st.dealt}   🩴 ${st.left}`, x, y + s * 0.85, Math.max(10, s * 0.55), { f: 'Plex', w: 700 });
           if (st.hitAt && now - st.hitAt < 600) D.sticker(c, 'طاخ!', x, ch.top[1] - s, Math.max(10, s * 0.6), css().bad, '#fff', -0.1);
         });
         for (const f of m.fly) {
@@ -308,25 +309,34 @@ const GUI = (() => {
 
   // 6) الجزيرة
   const island = {
-    controls(el) { el.innerHTML = ''; this.j = joystick(el); note(el, 'حرّك شخصيتك وتجمّع مع غيرك بنفس عدد الرقم'); },
+    controls(el) { el.innerHTML = ''; this.j = joystick(el); note(el, 'اركض عجزيرة فيها دائرة فاضية… واللي بيضل بلا جزيرة بيطلع'); },
     cleanup() { this.j && this.j._cleanup && this.j._cleanup(); },
     draw(c, w, h, g) {
-      D.hara(c, w, h, {}); const F = field(w, h), t = performance.now() / 1000, now = A.sNow();
+      D.hara(c, w, h, {}); const F = field(w, h), now = A.sNow();
+      const U = Math.min(F.w, F.h);
       const s = Math.max(7, Math.min(w, h) / 36);
-      if (g.phase === 'final' && g.final) { const [x, y] = toS(F, g.final); c.fillStyle = '#E9CF8F'; c.beginPath(); c.ellipse(x, y, s * 3.4, s * 2.3, 0, 0, 7); c.fill(); c.strokeStyle = css().line; c.lineWidth = 3; c.stroke(); c.fillStyle = css().ok; c.beginPath(); c.arc(x, y - s * 2.2, s * 1.2, 0, 7); c.fill(); c.stroke(); D.txt(c, '🏝️', x, y, s * 2, { f: 'Plex' }); }
-      if (g.phase === 'judge') for (const gr of g.groups) { const [x, y] = toS(F, gr.c); c.strokeStyle = '#fff'; c.lineWidth = 4; c.setLineDash([10, 6]); c.beginPath(); c.arc(x, y - s, s * (2.4 + gr.ids.length * 0.5), 0, 7); c.stroke(); c.setLineDash([]); }
-      const ids = Object.keys(g.pos).filter((id) => g.alive.includes(id) || (g.flash && g.flash.ids.includes(id) && now - g.flash.at < 2500));
+      for (const o of g.isl || []) {
+        const [x, y] = toS(F, [o.x, o.y]); const r = o.r * U * 1.15;
+        c.fillStyle = '#4FA7C9'; c.beginPath(); c.ellipse(x, y + 4, r * 1.25, r * 1.05, 0, 0, 7); c.fill();
+        c.fillStyle = '#EED49A'; c.strokeStyle = css().line; c.lineWidth = 3; c.beginPath(); c.ellipse(x, y, r * 1.1, r * 0.92, 0, 0, 7); c.fill(); c.stroke();
+        for (let k = 0; k < o.cap; k++) {
+          const a = -Math.PI / 2 + (k / o.cap) * Math.PI * 2; const sx = o.cap === 1 ? x : x + Math.cos(a) * r * 0.55 * 1.0, sy = o.cap === 1 ? y : y + Math.sin(a) * r * 0.55 * 0.85;
+          const taken = k < o.seats.length;
+          c.fillStyle = taken ? P(o.seats[k]).color : '#fff'; c.strokeStyle = css().line; c.lineWidth = 2.5; c.beginPath(); c.arc(sx, sy, Math.max(6, s * 0.7), 0, 7); c.fill(); c.stroke();
+        }
+        D.sticker(c, `${o.seats.length}/${o.cap}`, x, y - r * 1.15, Math.max(10, s * 0.6), o.seats.length >= o.cap ? css().bad : css().ok, '#fff', 0);
+      }
+      const ids = Object.keys(g.pos).filter((id) => g.alive.includes(id) || (g.flash && g.flash.ids.includes(id) && now - g.flash.at < 2000));
       ids.sort((a, b) => g.pos[a][1] - g.pos[b][1]);
       for (const id of ids) {
         const q = smooth('is' + id, g.pos[id][0], g.pos[id][1]);
         const [x, y] = toS(F, q); const pend = g.pending && g.pending.includes(id); const dead = !g.alive.includes(id);
+        const seated = (g.isl || []).some((o) => o.seats.includes(id));
         const prev = sm['isv' + id] || [x, y]; const moving = Math.hypot(prev[0] - x, prev[1] - y) > 0.4; sm['isv' + id] = [x, y];
-        D.char(c, x, y, s, P(id), { pose: dead ? 'fall' : moving ? 'run' : 'idle', flip: prev[0] > x ? -1 : 1, me: isMe(id), label: isMe(id) || ids.length <= 8, seed: id.charCodeAt(0), x: pend, alpha: dead ? 0.5 : 1 });
+        D.char(c, x, y, s, P(id), { pose: dead ? 'fall' : seated ? 'cheer' : moving ? 'run' : 'idle', flip: prev[0] > x ? -1 : 1, me: isMe(id), label: isMe(id) || ids.length <= 8, seed: id.charCodeAt(0), x: pend, alpha: dead ? 0.5 : 1 });
       }
-      if (g.phase === 'gather' || g.phase === 'judge') {
-        D.sticker(c, String(g.k), w / 2, Math.min(70, h * 0.14), Math.min(64, h * 0.12), css().acc, '#fff', -0.05);
-        if (g.phase === 'gather') { const left = Math.max(0, (g.phaseEnd - now) / 1000); D.txt(c, left.toFixed(1), w / 2, Math.min(70, h * 0.14) + Math.min(56, h * 0.1), 18, { f: 'Plex', w: 700 }); }
-      }
+      if (g.phase === 'run') { const left = Math.max(0, (g.phaseEnd - now) / 1000); D.sticker(c, left.toFixed(1), w / 2, 26, 18, css().acc, '#fff', 0); }
+      if (g.phase === 'roam') D.sticker(c, 'الجزر جاية…', w / 2, 26, 16, css().paper, css().ink, -0.03);
     },
   };
 
@@ -403,12 +413,17 @@ const GUI = (() => {
   };
 
   // 9) القنبلة
-  function bomb(c, x, y, r, live, boom) {
+  function bomb(c, x, y, r, live, boom, frac) {
     if (boom) { c.save(); for (let i = 0; i < 14; i++) { const a = (i / 14) * 7, l = r * (2 + (i % 3) * 0.6); c.fillStyle = i % 2 ? css().acc2 : css().acc; c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); c.lineTo(x + Math.cos(a + 0.25) * l * 0.6, y + Math.sin(a + 0.25) * l * 0.6); c.fill(); } c.restore(); D.txt(c, 'بووم!', x, y, r * 0.9, { color: '#fff', stroke: css().line }); return; }
     c.fillStyle = '#26232B'; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill(); c.strokeStyle = css().line; c.lineWidth = 3; c.stroke();
     c.fillStyle = 'rgba(255,255,255,.25)'; c.beginPath(); c.arc(x - r * 0.35, y - r * 0.35, r * 0.25, 0, 7); c.fill();
-    c.strokeStyle = '#8B6B4A'; c.lineWidth = 4; c.beginPath(); c.moveTo(x + r * 0.5, y - r * 0.8); c.quadraticCurveTo(x + r, y - r * 1.4, x + r * 1.2, y - r * 1.2); c.stroke();
-    if (live) { const t = performance.now() / 1000; for (let i = 0; i < 6; i++) { const a = t * 9 + i, d = 6 + ((t * 40 + i * 7) % 10); c.fillStyle = i % 2 ? css().acc2 : css().acc; c.beginPath(); c.arc(x + r * 1.2 + Math.cos(a) * d, y - r * 1.2 + Math.sin(a) * d, 3, 0, 7); c.fill(); } }
+    // الفتيل: طوله بيبيّن قدّيش باقي
+    const L = r * 3.4, f = frac == null ? 1 : Math.max(0, Math.min(1, frac));
+    const pt = (k) => [x + r * 0.5 + k * L, y - r * 0.9 - Math.sin(k * Math.PI * 3) * r * 0.25 - k * r * 0.3];
+    c.lineCap = 'round';
+    c.strokeStyle = 'rgba(0,0,0,.18)'; c.lineWidth = 4; c.beginPath(); for (let k = 0; k <= 1.001; k += 0.02) { const [px, py] = pt(k); k ? c.lineTo(px, py) : c.moveTo(px, py); } c.stroke();
+    c.strokeStyle = '#8B6B4A'; c.lineWidth = 5; c.beginPath(); for (let k = 0; k <= f + 0.001; k += 0.02) { const [px, py] = pt(Math.min(k, f)); k ? c.lineTo(px, py) : c.moveTo(px, py); } c.stroke();
+    if (live) { const [ex, ey] = pt(f); const t = performance.now() / 1000; for (let i = 0; i < 7; i++) { const a = t * 9 + i, d = 5 + ((t * 40 + i * 7) % 10); c.fillStyle = i % 2 ? css().acc2 : css().acc; c.beginPath(); c.arc(ex + Math.cos(a) * d, ey + Math.sin(a) * d, 3, 0, 7); c.fill(); } }
   }
   const bombUI = {
     controls(el) {
@@ -423,7 +438,9 @@ const GUI = (() => {
       const all = [...new Set(g.phase === 'show' && g.result ? ids : g.alive)];
       const s = Math.max(8, Math.min(26, R / Math.max(4, all.length * 0.55)));
       const boom = g.phase === 'show' && g.exploded && now - g.phaseEnd + 3200 < 1200;
-      bomb(c, cx, cy, Math.min(48, R * 0.3), g.phase === 'live', boom);
+      const frac = g.phase === 'live' && g.boomAt ? (g.boomAt - now) / (g.boomAt - g.liveAt) : g.phase === 'arm' ? 1 : 0;
+      const br = Math.min(34, R * 0.2);
+      bomb(c, cx - br * 1.6, cy, br, g.phase === 'live', boom, frac);
       all.forEach((id, i) => {
         const a = -Math.PI / 2 + (i / all.length) * Math.PI * 2;
         const rel = g.rel.includes(id), hold = g.hold[id];
@@ -437,41 +454,51 @@ const GUI = (() => {
     },
   };
 
-  // 10) المزاد الأخير
-  const auction = {
+  // 10) عالي واطي
+  const highlow = {
     controls(el) {
       el.innerHTML = '';
-      const box = document.createElement('div'); box.className = 'bid';
-      box.innerHTML = '<div class="row between"><b id="bBal"></b><span class="pill" id="bStat"></span></div><div class="bv" id="bVal">0</div><input type="range" dir="ltr" id="bR" min="0" max="100" value="0"><div class="row center wrap"><button class="btn sm" data-d="-5">−5</button><button class="btn sm" data-d="-1">−1</button><button class="btn sm" data-d="1">+1</button><button class="btn sm" data-d="5">+5</button><button class="btn sm" data-d="10">+10</button></div><button class="btn pri wide" id="bGo">زايد 🔨</button>';
-      el.appendChild(box);
-      this.r = box.querySelector('#bR'); this.v = box.querySelector('#bVal'); this.bal = box.querySelector('#bBal'); this.st = box.querySelector('#bStat');
-      this.r.oninput = () => (this.v.textContent = this.r.value);
-      box.querySelectorAll('[data-d]').forEach((b) => (b.onclick = () => { this.r.value = Math.max(0, Math.min(+this.r.max, +this.r.value + +b.dataset.d)); this.r.oninput(); }));
-      box.querySelector('#bGo').onclick = () => { A.send({ a: 'bid', v: +this.r.value }); this.sent = +this.r.value; this.sentR = this.round; SFX.click(); };
+      const set = (v) => { A.send({ a: 'pos', v }); this.mine = v; this.lastSet = performance.now(); this.sync(); vib(8); };
+      this.bu = btn(el, 'عالي ⬆', 'قوم وقّف', ' mode', { down: () => set('U') });
+      this.bd = btn(el, 'واطي ⬇', 'انزل اقعد', 'alt mode', { down: () => set('D') });
+      this.keys = (e) => { if (e.key === 'ArrowUp') set('U'); else if (e.key === 'ArrowDown') set('D'); };
+      window.addEventListener('keydown', this.keys);
+      this.mine = 'U'; this.heard = -1; this.sync();
     },
-    update(g) {
-      if (!this.r) return; const b = g.bal[A.me] || 0;
-      if (+this.r.max !== b) { this.r.max = b; if (+this.r.value > b) { this.r.value = b; this.r.oninput(); } }
-      this.bal.textContent = `رصيدك: ${b}`; this.round = g.round;
-      this.st.textContent = g.phase === 'bid' ? (this.sentR === g.round ? `زايدت بـ${this.sent}` : 'ما زايدت لسّا') : 'انكشفت';
+    cleanup() { window.removeEventListener('keydown', this.keys); },
+    sync() { if (!this.bu) return; this.bu.classList.toggle('on', this.mine === 'U'); this.bd.classList.toggle('on', this.mine === 'D'); },
+    update(g) { const st = g.state && g.state[A.me]; if (st && st !== this.mine && performance.now() - (this.lastSet || 0) > 400) { this.mine = st; this.sync(); } },
+    tick(g) {
+      const c = g.calls && g.calls[g.calls.length - 1]; if (!c || c.i === this.heard) return;
+      const now = A.sNow(); const at = c.at + (c.fake ? 300 : 0);
+      if (now >= at && now - at < 600) { this.heard = c.i; SFX.call(c.w === 'U'); }
     },
     draw(c, w, h, g) {
       D.hara(c, w, h, { wall: true }); const now = A.sNow();
-      const ids = g.reveal ? Object.keys(g.reveal.bids) : g.alive;
-      const n = ids.length, cols = Math.min(n, w > 520 ? 6 : 4), rows = Math.ceil(n / cols);
-      const cw = w / cols, chh = (h * 0.82) / rows;
-      const s = Math.max(8, Math.min(cw / 5, chh / 6.2, 24));
+      const cl = g.calls && g.calls[g.calls.length - 1];
+      const live = cl && g.pend === cl.i;
+      const s0 = Math.min(30, h / 16), lx = w / 2, ly = h * 0.36;
+      const leader = { id: '__l', name: ' ', color: '#2D2A32' };
+      const body = cl ? cl.body : 'U';
+      const lch = D.char(c, lx, ly, s0, leader, { pose: body === 'U' ? 'cheer' : 'duck', seed: 3 });
+      c.fillStyle = '#2D2A32'; c.beginPath(); c.arc(lch.head[0], lch.head[1], s0 * 0.95, 0, 7); c.fill();
+      D.txt(c, '📱', lch.head[0], lch.head[1], s0 * 1.1, { f: 'Plex' });
+      if (cl && now >= cl.at) {
+        const fakeNow = cl.fake && now - cl.at < 300;
+        const word = fakeNow ? 'عا…' : cl.w === 'U' ? 'عالي!' : 'واطي!';
+        if (live || now - cl.at < 1500) D.sticker(c, word, lx + s0 * 3.2, ly - s0 * 3.4, Math.min(34, s0 * 1.2), cl.w === 'U' && !fakeNow ? css().acc : fakeNow ? css().paper : css().acc3, fakeNow ? css().ink : '#fff', -0.06);
+        if (live) { const k = Math.max(0, 1 - (now - cl.at) / (cl.win + (cl.fake ? 300 : 0))); c.fillStyle = 'rgba(0,0,0,.12)'; c.fillRect(w * 0.2, ly + s0 * 0.8, w * 0.6, 6); c.fillStyle = css().acc2; c.fillRect(w * 0.2, ly + s0 * 0.8, w * 0.6 * k, 6); }
+      } else if (g.t0 > now) D.sticker(c, 'اسمع الكلمة… مو الحركة!', w / 2, h * 0.12, 18, css().acc2, '#1E1B18', -0.03);
+      // اللاعبين
+      const ids = g.alive.concat(g.flash && now - g.flash.at < 1500 ? g.flash.ids.filter((x) => !g.alive.includes(x)) : []);
+      const n = ids.length; const cols = Math.min(n, w > 520 ? 8 : 6); const rows = Math.ceil(n / cols);
+      const s = Math.max(7, Math.min(20, (w * 0.9) / (cols * 2.6), (h * 0.45) / (rows * 5)));
       ids.forEach((id, i) => {
-        const x = cw * (i % cols) + cw / 2, y = h * 0.18 + chh * Math.floor(i / cols) + chh * 0.8;
-        const out = g.reveal && g.reveal.outs.includes(id);
-        const ch = D.char(c, x, y, s, P(id), { pose: out ? 'sad' : g.reveal && g.reveal.top === id ? 'cheer' : 'idle', me: isMe(id), label: true, seed: i, x: out && g.phase === 'reveal' });
-        const tagY = ch.top[1] - s * 0.9;
-        if (g.reveal) D.sticker(c, String(g.reveal.bids[id]), x, tagY, Math.max(11, s * 0.8), out ? css().bad : g.reveal.top === id ? css().ok : css().paper, out || g.reveal.top === id ? '#fff' : css().ink, 0);
-        else D.txt(c, g.bidded.includes(id) ? '🔨✔' : '…', x, tagY, s * 0.8, { f: 'Plex' });
-        D.txt(c, '🪙' + (g.bal[id] || 0), x, y + s * 1.9, Math.max(10, s * 0.55), { f: 'Plex', w: 700 });
+        const r = Math.floor(i / cols), k = i % cols, inRow = Math.min(cols, n - r * cols);
+        const x = w / 2 + (k - (inRow - 1) / 2) * s * 2.6, y = h * 0.62 + r * s * 5 + s * 3;
+        const dead = !g.alive.includes(id); const st = isMe(id) ? this.mine : g.state[id];
+        D.char(c, x, y, s, P(id), { pose: dead ? 'fall' : st === 'U' ? 'cheer' : 'duck', me: isMe(id), label: n <= 10 || isMe(id), seed: i, alpha: dead ? 0.5 : 1, x: dead });
       });
-      if (g.phase === 'bid') { const left = Math.max(0, (g.phaseEnd - now) / 15000); c.fillStyle = 'rgba(0,0,0,.12)'; c.fillRect(20, 10, w - 40, 7); c.fillStyle = css().acc; c.fillRect(20, 10, (w - 40) * left, 7); }
-      if (g.reveal && g.reveal.refund) D.txt(c, `الأعلى رجعلو ${g.reveal.refund} 🪙`, w / 2, h * 0.08 + 16, 14, { f: 'Plex', w: 700 });
     },
   };
 
@@ -551,6 +578,8 @@ const GUI = (() => {
       const laneW = Math.min(90, w / 4.5), lx = w / 2 - laneW * 1.5, top = h * 0.22, hitY = h * 0.48;
       c.fillStyle = css().dark ? 'rgba(0,0,0,.25)' : 'rgba(255,255,255,.45)'; D.rr(c, lx - 6, top - 10, laneW * 3 + 12, hitY - top + 40, 12); c.fill(); c.strokeStyle = css().line; c.lineWidth = 2; c.stroke();
       ['L', 'D', 'R'].forEach((k, i) => D.txt(c, MV[k].t, lx + laneW * i + laneW / 2, hitY + 22, 13, { f: 'Plex', w: 700, color: css().muted }));
+      // المربع بيتلوّن وقت لازم تكبس
+      for (const b of g.beats) { if (Math.abs(b.at - now) <= b.win) { const li = MV[b.mv].i; c.fillStyle = b.mv === 'D' ? css().acc2 : b.mv === 'R' ? css().acc : css().acc3; c.globalAlpha = 0.85; D.rr(c, lx + laneW * li + 4, hitY - laneW * 0.42, laneW - 8, laneW * 0.84, 10); c.fill(); c.globalAlpha = 1; c.strokeStyle = css().line; c.lineWidth = 3; c.stroke(); } }
       c.strokeStyle = css().acc; c.lineWidth = 4; c.beginPath(); c.moveTo(lx, hitY); c.lineTo(lx + laneW * 3, hitY); c.stroke();
       for (const b of g.beats) {
         const dt = (b.at - now) / 1000; if (dt < -0.35 || dt > 1.8) continue;
@@ -577,8 +606,8 @@ const GUI = (() => {
     },
   };
 
-  const UI = { tug, rps, pillow, blow, slipper, island, push, tag, bomb: bombUI, auction, cowboy, dabke };
-  const BRACKET = ['tug', 'rps', 'pillow', 'blow', 'slipper'];
+  const UI = { tug, rps, pillow, blow, slipper, island, push, tag, bomb: bombUI, highlow, cowboy, dabke };
+  const BRACKET = ['tug', 'rps', 'blow', 'slipper'];
   return { UI, BRACKET, init(api) { A = api; }, reset() { for (const k in sm) delete sm[k]; } };
 })();
 

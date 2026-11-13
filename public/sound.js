@@ -36,6 +36,7 @@ const SFX = (() => {
     get ac() { return ctx(); },
     setMuted(v) { muted = v; },
     tick() { tone(1400, 0.03, 'square', 0.07); },
+    call(up) { if (up) { tone(520, 0.12, 'triangle', 0.2, 0, 300); tone(880, 0.18, 'triangle', 0.2, 0.12, 200); } else { tone(700, 0.12, 'triangle', 0.2, 0, -250); tone(330, 0.2, 'triangle', 0.2, 0.12, -120); } },
     click() { tone(660, 0.05, 'triangle', 0.12); },
     pop() { tone(500, 0.08, 'sine', 0.2, 0, 400); },
     beep(n) { tone(n ? 660 : 990, n ? 0.15 : 0.35, 'square', 0.14); },
