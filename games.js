@@ -255,54 +255,54 @@ class Blow extends Bracket {
   matchView(m) { const lv = {}; m.ps.forEach((p) => (lv[p] = Math.round((m.lv[p] || 0) * 100) / 100)); return { pos: Math.round(m.pos * 1000) / 1000, xy: m.xy.map((v) => Math.round(v * 1000) / 1000), lv, max: m.max }; }
 }
 
-// 5) حرب الشحاطات
-class Slipper extends Bracket {
-  // زر التخبّي: طول ما إصبعك عليه إنت متخبّي. بس تشيل إصبعك بتشلّف شحاطة كل ثانية.
-  // كل واحد معه 10 شحاطات. لما يخلصوا، اللي صاب أكتر بيربح.
-  initMatch(m) { m.st = {}; m.ps.forEach((p) => (m.st[p] = { hide: false, left: 10, dealt: 0, taken: 0, next: 0, tg: 0, hitAt: 0, firstHit: Infinity })); m.fly = []; m.max = 40; m.sudden = false; }
-  onFightStart(m) { const t = now(); m.ps.forEach((p, i) => (m.st[p].next = t + 600 + i * 250)); }
-  matchInput(m, pid, msg) {
-    const s = m.st[pid];
-    if (msg.a === 'hide') { const on = !!msg.on; if (!on && s.hide) s.next = Math.max(s.next, now() + 150); s.hide = on; }
+// 5) حرب الشحاطات — كلكن بحلقة وحدة. يا متخبّي (طول ما إصبعك عالزر) يا عم تشلّف شحاطة كل ثانية عحدا. إصابتين وبتطلع.
+class Slipper extends ElimGame {
+  constructor(ctx) {
+    super(ctx);
+    this.st = {}; this.ids.forEach((p) => (this.st[p] = { hide: false, hp: 2, dealt: 0, next: 0, hitAt: 0, lastHitAt: 0 }));
+    this.fly = []; this.go = false; this.goAt = now() + 2500; this.t = 0; this.max = 90; this.seq = 0;
   }
-  tickMatch(m) {
+  get realtime() { return true; }
+  start() { this.msg = 'شيل إصبعك لتشلّف… وحطّه لتتخبّى!'; }
+  input(pid, msg) { if (msg.a === 'hide' && this.alive.has(pid)) { const s = this.st[pid], on = !!msg.on; if (!on && s.hide) s.next = Math.max(s.next, now() + 200); s.hide = on; } }
+  tick(dt) {
+    if (this.done) return;
     const t = now();
-    for (const p of m.active) {
-      const s = m.st[p];
-      if (s.hide || s.left <= 0 || t < s.next) continue;
-      const opp = m.active.filter((q) => q !== p); if (!opp.length) continue;
-      const open = opp.filter((q) => !m.st[q].hide);
-      const to = open.length ? open[s.tg++ % open.length] : opp[s.tg++ % opp.length];
-      s.left--; s.next = t + 1000;
-      m.fly.push({ from: p, to, at: t, land: t + 750 });
+    if (!this.go) { if (t >= this.goAt) { this.go = true; this.ids.forEach((p, i) => (this.st[p].next = t + 300 + (i % 4) * 200)); } else return; }
+    this.t += dt;
+    const al = [...this.alive];
+    for (const p of al) {
+      const s = this.st[p];
+      if (s.hide || t < s.next) continue;
+      const opp = al.filter((q) => q !== p); if (!opp.length) continue;
+      const open = opp.filter((q) => !this.st[q].hide);
+      const pool = open.length ? open : opp;
+      const to = pool[rint(0, pool.length - 1)];
+      s.next = t + 1000;
+      this.fly.push({ id: ++this.seq, from: p, to, at: t, land: t + 800 });
     }
-    for (const f of m.fly) {
+    const outs = [];
+    for (const f of this.fly) {
       if (f.res || t < f.land) continue;
-      const o = m.st[f.to];
-      if (!o || !m.active.includes(f.to)) { f.res = 'miss'; continue; }
+      const o = this.st[f.to];
+      if (!this.alive.has(f.to)) { f.res = 'miss'; continue; }
       if (o.hide) f.res = 'block';
-      else { f.res = 'hit'; o.taken++; o.hitAt = t; const a = m.st[f.from]; a.dealt++; if (a.firstHit === Infinity) a.firstHit = t; }
+      else { f.res = 'hit'; o.hp--; o.hitAt = t; this.st[f.from].dealt++; if (o.hp <= 0 && !outs.includes(f.to)) outs.push(f.to); }
     }
-    m.fly = m.fly.filter((f) => !f.res || t - f.land < 900);
-    const allOut = m.active.every((p) => m.st[p].left <= 0) && m.fly.every((f) => f.res);
-    if (allOut || m.t >= m.max) this.decide(m);
-  }
-  decide(m) {
-    // إذا خلص الوقت: اللي ضلّ متخبّي ومعه شحاطات ما رماها بيطلع برّا (وإذا الاتنين… الاتنين)
-    if (m.t >= m.max) {
-      const hoard = m.active.filter((p) => m.st[p].left > 0);
-      if (hoard.length >= m.active.length) return this.endMatch(m, null);
-      hoard.forEach((p) => this.knock(m, p)); if (m.done) return;
+    this.fly = this.fly.filter((f) => !f.res || t - f.land < 900);
+    if (outs.length) this.eliminate(outs, 'انصاب مرتين');
+    if (this.done) return;
+    if (this.t >= this.max) {
+      // خلص الوقت: الترتيب حسب الإصابات (الأقل انصاب أحسن، وبعدين اللي صاب أكتر)
+      const rest = [...this.alive].sort((a, b) => (this.st[a].hp - this.st[b].hp) || (this.st[a].dealt - this.st[b].dealt));
+      while (rest.length > 1) { const w = rest[0]; const grp = rest.filter((q) => this.st[q].hp === this.st[w].hp && this.st[q].dealt === this.st[w].dealt); grp.forEach((q) => rest.splice(rest.indexOf(q), 1)); if (rest.length) this.eliminate(grp, 'خلص الوقت'); else break; }
+      this.finish();
     }
-    const sc = (p) => m.st[p].dealt;
-    const top = Math.max(...m.active.map(sc));
-    if (top === 0) return this.endMatch(m, null);               // ولا حدا صاب حدا: الكل برّا
-    const best = m.active.filter((p) => sc(p) === top);
-    // تعادل بالإصابات: أول واحد صاب التاني بيربح
-    best.sort((a, b) => m.st[a].firstHit - m.st[b].firstHit);
-    this.endMatch(m, best[0]);
   }
-  matchView(m) { const o = {}; for (const p of m.ps) { const s = m.st[p]; o[p] = { hide: s.hide, left: s.left, dealt: s.dealt, taken: s.taken, next: s.next, hitAt: s.hitAt }; } return { st: o, fly: m.fly.map((f) => ({ from: f.from, to: f.to, at: f.at, land: f.land, res: f.res || null })), max: m.max, sudden: m.sudden }; }
+  view() {
+    const st = {}; for (const p of this.ids) { const s = this.st[p]; st[p] = { hide: s.hide, hp: s.hp, dealt: s.dealt, next: s.next, hitAt: s.hitAt }; }
+    return Object.assign(this.baseView(), { kind: 'slipper', st, fly: this.fly.map((f) => ({ id: f.id, from: f.from, to: f.to, at: f.at, land: f.land, res: f.res || null })), go: this.go, goAt: this.goAt, t: Math.round(this.t), max: this.max });
+  }
 }
 
 // ───────────────────────── ساحة حركة (جويستيك) ─────────────────────────
@@ -547,7 +547,7 @@ class Tag extends Arena {
     this.obst = [[0.25, 0.3, 0.05], [0.72, 0.28, 0.045], [0.5, 0.55, 0.06], [0.24, 0.76, 0.045], [0.78, 0.74, 0.05]];
     const n = this.ids.length;
     shuffle(this.ids).forEach((p, i) => { const a = (i / n) * Math.PI * 2; this.pos[p] = [0.5 + Math.cos(a) * 0.4, 0.5 + Math.sin(a) * 0.4]; this.pushOut(this.pos[p], 0.03); });
-    const nc = n > 9 ? 2 : 1;
+    const nc = 1;
     this.cat = []; for (let i = 0; i < nc; i++) this.cat.push({ x: 0.5, y: i ? 0.12 : 0.5, tgt: null, re: 0, stun: 0, sp: 0.2 });
     if (nc === 1) this.cat[0].y = 0.5;
     this.go = false; this.goAt = now() + 2500; this.t = 0;
@@ -601,98 +601,96 @@ class Tag extends Arena {
 }
 
 // ───────────────────────── ألعاب الجولات ─────────────────────────
-// 9) القنبلة
-class Bomb extends ElimGame {
-  constructor(ctx) { super(ctx); this.phase = 'arm'; this.phaseEnd = 0; this.hold = {}; this.rel = []; this.boomAt = 0; this.round = 0; this.result = null; }
-  get realtime() { return true; }
-  start() { this.toArm(); }
-  toArm() { this.round++; this.phase = 'arm'; this.phaseEnd = now() + 6000; this.rel = []; this.result = null; this.msg = 'حطّوا إصبعكن عالشاشة… وما تشيلوه!'; }
-  input(pid, msg) {
-    if (!this.alive.has(pid)) return;
-    if (msg.a === 'down') { if (this.phase === 'arm') this.hold[pid] = true; }
-    if (msg.a === 'up') {
-      if (this.phase === 'arm') this.hold[pid] = false;
-      else if (this.phase === 'live' && this.hold[pid]) { this.hold[pid] = false; this.rel.push({ id: pid, at: now() - this.liveAt }); }
-    }
+// 9) القنبلة — جويستيك: واحد على راسه القنبلة وبيلحق الناس، بس يلمس حدا بتنتقل لراسه. ما بترجع للي عطاك ياها (إلا إذا ضلّيتوا اتنين).
+// الفتيل مبيّن، ولما تنفجر بيطلع اللي على راسه.
+class Bomb extends Arena {
+  constructor(ctx) { super(ctx); this.speed = 0.3; this.holder = null; this.from = null; this.passAt = 0; this.round = 0; this.phase = 'wait'; this.phaseEnd = now() + 2500; this.liveAt = 0; this.boomAt = 0; this.boom = null; }
+  start() { this.msg = 'اللي على راسه القنبلة… يلحق غيره!'; }
+  newRound() {
+    this.round++;
+    const al = [...this.alive];
+    this.holder = al[rint(0, al.length - 1)]; this.from = null; this.passAt = now();
+    this.phase = 'live'; this.liveAt = now();
+    const n = al.length; this.boomAt = this.liveAt + rint(6500, 10500) + Math.min(n, 10) * 300;
+    this.msg = 'القنبلة عم تحترق…'; this.boom = null;
   }
-  tick() {
+  tick(dt) {
     if (this.done) return;
     const t = now();
-    if (this.phase === 'arm') {
-      const al = [...this.alive];
-      if (t >= this.phaseEnd || (al.every((p) => this.hold[p]) && t >= this.phaseEnd - 4500)) {
-        this.phase = 'live'; this.liveAt = t;
-        const n = this.alive.size; this.boomAt = t + rint(6000, 12000 + Math.min(n, 12) * 600);
-        al.forEach((p) => { if (!this.hold[p]) this.rel.push({ id: p, at: 0 }); });
-        this.msg = 'القنبلة اشتغلت…';
+    if (this.phase === 'wait') { this.moveAll(dt); if (t >= this.phaseEnd) this.newRound(); return; }
+    if (this.phase === 'boom') { if (t >= this.phaseEnd) { if (!this.done) { this.phase = 'wait'; this.phaseEnd = t + 1500; this.msg = 'جولة جديدة…'; } } return; }
+    // اللي حامل القنبلة أسرع شوي
+    for (const p of this.alive) {
+      const v = this.mv[p], q = this.pos[p], sp = this.speed * (p === this.holder ? 1.12 : 1);
+      q[0] = clamp(q[0] + v[0] * sp * dt, 0.03, 0.97); q[1] = clamp(q[1] + v[1] * sp * dt, 0.05, 0.97);
+    }
+    if (!this.alive.has(this.holder)) { const al = [...this.alive]; this.holder = al[rint(0, al.length - 1)]; this.from = null; }
+    // اللمس بينقل القنبلة
+    if (t - this.passAt > 500) {
+      const h = this.pos[this.holder];
+      const two = this.alive.size <= 2;
+      let best = null, bd = 0.065;
+      for (const p of this.alive) {
+        if (p === this.holder || (!two && p === this.from)) continue;
+        const q = this.pos[p], d = Math.hypot(q[0] - h[0], q[1] - h[1]);
+        if (d < bd) { bd = d; best = p; }
       }
-    } else if (this.phase === 'live') {
-      if (t >= this.boomAt || this.rel.length >= this.alive.size) this.boom();
-    } else if (this.phase === 'show' && t >= this.phaseEnd) {
-      const outs = this.result.out;
-      if (outs.length) this.eliminate(outs, this.result.why);
-      if (!this.done) this.toArm();
+      if (best) { this.from = this.holder; this.holder = best; this.passAt = t; }
+    }
+    if (t >= this.boomAt) {
+      const v = this.holder; this.boom = { id: v, at: t };
+      this.phase = 'boom'; this.phaseEnd = t + 2600;
+      this.msg = 'بووم!';
+      this.eliminate([v], 'انفجرت فيه القنبلة');
     }
   }
-  boom() {
-    const al = [...this.alive];
-    const relIds = this.rel.map((r) => r.id);
-    const first = this.rel.length ? [this.rel[0].id] : [];
-    // اللي شالوا بنفس اللحظة تقريباً (أقل من 60ms) مع الأول بيطلعوا معه
-    if (this.rel.length > 1) for (let i = 1; i < this.rel.length; i++) if (this.rel[i].at - this.rel[0].at < 60) first.push(this.rel[i].id);
-    const holders = al.filter((p) => !relIds.includes(p));
-    const out = [...new Set([...first, ...holders])];
-    const survivors = al.filter((p) => !out.includes(p));
-    this.phase = 'show'; this.phaseEnd = now() + 3200;
-    this.exploded = now() >= this.boomAt;
-    if (!survivors.length) {
-      this.fails = (this.fails || 0) + 1;
-      if (this.fails >= 3) { const o = first.length ? first : [al[Math.floor(Math.random() * al.length)]]; this.fails = 0; this.result = { out: o, first: o, holders: [], why: 'تالت مرة… بيطلع الأول' }; this.msg = 'تالت مرة طلعتوا كلكن… بيطلع الأول'; }
-      else { this.result = { out: [], first, holders, why: '' }; this.msg = 'طلعتوا كلكن! منعيد الجولة'; }
-    } else { this.fails = 0; this.result = { out, first, holders, why: 'القنبلة' }; this.msg = `${out.length === 1 ? 'واحد طلع' : out.length + ' طلعوا'}`; }
-    al.forEach((p) => (this.hold[p] = false));
-  }
-  view() { return Object.assign(this.baseView(), { kind: 'bomb', phase: this.phase, phaseEnd: this.phaseEnd, hold: this.hold, rel: this.rel.map((r) => r.id), result: this.result, round: this.round, exploded: !!this.exploded, liveAt: this.phase === 'live' ? this.liveAt : 0, boomAt: this.phase === 'live' ? this.boomAt : 0 }); }
+  view() { return Object.assign(this.baseView(), { kind: 'bomb', pos: this.posView(), holder: this.phase === 'live' ? this.holder : null, from: this.from, phase: this.phase, liveAt: this.liveAt, boomAt: this.phase === 'live' ? this.boomAt : 0, boom: this.boom, round: this.round, passAt: this.passAt }); }
 }
 
-// 10) عالي واطي — الموبايل بينادي «عالي» أو «واطي»، والكل لازم يكون بالوضع الصح. وأحياناً جسمه بيعمل العكس ليضحك عليكن.
+// 10) عالي واطي — درج من 5 درجات. الموبايل بينادي رقم درجة، والكل لازم يطلع أو ينزل عليها قبل ما يخلص الوقت.
+// وأحياناً الموبايل نفسه بيوقف على درجة غير اللي قالها ليضحك عليكن.
 class HighLow extends ElimGame {
-  constructor(ctx) { super(ctx); this.state = {}; this.ids.forEach((p) => (this.state[p] = 'U')); this.calls = []; this.judged = 0; this.fails = 0; this.last = null; }
+  constructor(ctx) { super(ctx); this.step = {}; this.ids.forEach((p) => (this.step[p] = 1)); this.calls = []; this.k = 0; this.pend = null; this.last = null; this.cur = 1; }
   get realtime() { return true; }
-  start() { this.msg = 'اسمع الكلمة… مو الحركة!'; this.t0 = now() + 2500; this.nextAt = this.t0; this.cur = 'U'; this.k = 0; }
-  input(pid, msg) { if (msg.a === 'pos' && (msg.v === 'U' || msg.v === 'D') && this.alive.has(pid)) this.state[pid] = msg.v; }
+  start() { this.msg = 'اسمع الرقم… مو وين واقف الموبايل!'; this.t0 = now() + 2500; this.nextAt = this.t0; }
+  input(pid, msg) {
+    if (!this.alive.has(pid)) return;
+    if (msg.a === 'mv') { const d = msg.v > 0 ? 1 : -1; this.step[pid] = clamp(this.step[pid] + d, 1, 5); }
+  }
   newCall(t) {
     const k = this.k++;
-    let w;
-    if (k < 2) w = k === 0 ? 'D' : 'U';
-    else w = Math.random() < Math.min(0.32, 0.12 + k * 0.01) ? this.cur : (this.cur === 'U' ? 'D' : 'U');   // أحياناً بيكرّر نفس الكلمة
-    const trick = k >= 3 && Math.random() < Math.min(0.45, 0.15 + k * 0.012);                            // جسمه بيعمل العكس
-    const fake = k >= 5 && !trick && Math.random() < 0.12;                                               // «عا… واطي!»
-    const win = Math.max(650, 1700 - k * 40);                                                            // الوقت المسموح بيضيق
-    const c = { i: k, at: t, w, body: trick ? (w === 'U' ? 'D' : 'U') : w, fake, win };
-    this.cur = w; this.calls.push(c); this.calls = this.calls.slice(-4);
-    this.nextAt = t + win + Math.max(450, 1100 - k * 25) + (fake ? 300 : 0);
-    this.pend = c;
+    let target; do { target = rint(1, 5); } while (target === this.cur && Math.random() < 0.8);
+    const trick = k >= 2 && Math.random() < Math.min(0.5, 0.2 + k * 0.015);
+    let body = target; if (trick) { do { body = rint(1, 5); } while (body === target); }
+    const win = Math.max(1100, 2600 - k * 70);                   // الوقت بيضيق
+    const c = { i: k, at: t, target, body, win };
+    this.cur = target; this.calls.push(c); this.calls = this.calls.slice(-3); this.pend = c;
+    this.nextAt = t + win + Math.max(700, 1300 - k * 25);
   }
   tick() {
     if (this.done) return;
     const t = now();
-    if (this.pend && t >= this.pend.at + this.pend.win + (this.pend.fake ? 300 : 0)) {
+    if (this.pend && t >= this.pend.at + this.pend.win) {
       const c = this.pend; this.pend = null;
       const al = [...this.alive];
-      const wrong = al.filter((p) => this.state[p] !== c.w);
-      this.last = { i: c.i, wrong, at: t };
-      if (wrong.length && wrong.length < al.length) { this.fails = 0; this.eliminate(wrong, c.w === 'U' ? 'ما وقف' : 'ما قعد'); }
-      else if (wrong.length >= al.length && ++this.fails >= 3) { this.fails = 0; }
+      const wrong = al.filter((p) => this.step[p] !== c.target);
+      this.last = { i: c.i, wrong, at: t, target: c.target };
+      if (wrong.length) {
+        if (wrong.length < al.length) this.eliminate(wrong, 'وقف عالدرجة الغلط');
+        else {   // الكل غلط: بيطلع الأبعد عن الدرجة الصح
+          const dist = (p) => Math.abs(this.step[p] - c.target); const mx = Math.max(...al.map(dist));
+          const far = al.filter((p) => dist(p) === mx); if (far.length < al.length) this.eliminate(far, 'كان الأبعد');
+        }
+      }
     }
     if (!this.pend && t >= this.nextAt) this.newCall(t);
     if (this.k > 400) this.finish();
   }
-  view() { return Object.assign(this.baseView(), { kind: 'highlow', t0: this.t0, calls: this.calls, pend: this.pend ? this.pend.i : -1, state: this.state, last: this.last }); }
+  view() { return Object.assign(this.baseView(), { kind: 'highlow', t0: this.t0, calls: this.calls, pend: this.pend ? this.pend.i : -1, step: this.step, last: this.last }); }
 }
 
 // 11) الهوكي — كل اتنين ضد بعض، أول واحد بيسجّل جولين بيربح. بالتلاتية واحد بيستنى ويلعب مع الربحان.
-const HW = 1, HH = 1.6, PR = 0.075, KR = 0.042, GW = 0.38;
+const HW = 1, HH = 1.6, PR = 0.08, KR = 0.042, GW = 0.42, PY = 0.16;
 class Hockey extends Bracket {
   initMatch(m) {
     m.wait = m.ps.slice(2); m.pair = m.ps.slice(0, 2); m.sc = {}; m.ps.forEach((p) => (m.sc[p] = 0));
@@ -701,9 +699,10 @@ class Hockey extends Bracket {
   resetPair(m, toward) {
     const [a, b] = m.pair;
     m.pd = {};
-    if (a) m.pd[a] = { x: 0.5, y: HH - 0.22, tx: 0.5, ty: HH - 0.22, vx: 0, vy: 0 };   // a تحت
-    if (b) m.pd[b] = { x: 0.5, y: 0.22, tx: 0.5, ty: 0.22, vx: 0, vy: 0 };            // b فوق
-    const dir = toward || (Math.random() < 0.5 ? -1 : 1); m.pk = { x: 0.5, y: HH / 2, vx: rnd(-0.25, 0.25), vy: dir * 0.35 };   // الطابة بتمشي شوي لعند اللي انسجل عليه
+    if (a) m.pd[a] = { x: 0.5, y: HH - PY, tx: 0.5, ty: HH - PY, vx: 0, vy: 0 };   // a تحت
+    if (b) m.pd[b] = { x: 0.5, y: PY, tx: 0.5, ty: PY, vx: 0, vy: 0 };            // b فوق
+    m.serve = (m.serve || 0) + 1;
+    const dir = toward || (Math.random() < 0.5 ? -1 : 1); { const a0 = rnd(-0.6, 0.6); const v0 = 0.9; m.pk = { x: 0.5, y: HH / 2, vx: Math.sin(a0) * v0, vy: dir * Math.cos(a0) * v0 }; }   // الطابة بتمشي شوي لعند اللي انسجل عليه
     m.freeze = now() + 1200; m.goal = null;
   }
   onShrink(m) {           // بالتلاتية: الربحان بيلعب مع اللي كان عم يستنى
@@ -712,9 +711,8 @@ class Hockey extends Bracket {
   matchInput(m, pid, msg) {
     if (msg.a !== 'pad' || !m.pair.includes(pid)) return;
     const d = m.pd[pid]; if (!d) return;
-    const x = clamp(+msg.x || 0, 0, 1), y = clamp(+msg.y || 0, 0, 1);    // y: 0 = خط النص، 1 = عند مرماك
-    if (pid === m.pair[0]) { d.tx = PR + x * (HW - 2 * PR); d.ty = HH / 2 + PR + y * (HH / 2 - 2 * PR); }
-    else { d.tx = HW - (PR + x * (HW - 2 * PR)); d.ty = HH / 2 - PR - y * (HH / 2 - 2 * PR); }
+    const x = clamp(+msg.x || 0, 0, 1);                                  // يمين ويسار بس
+    if (pid === m.pair[0]) d.tx = PR + x * (HW - 2 * PR); else d.tx = HW - (PR + x * (HW - 2 * PR));
   }
   tickMatch(m, dt) {
     const t = now();
@@ -723,14 +721,16 @@ class Hockey extends Bracket {
     for (let k = 0; k < steps; k++) {
       for (const p of m.pair) {
         const d = m.pd[p]; if (!d) continue;
-        const dx = d.tx - d.x, dy = d.ty - d.y, dist = Math.hypot(dx, dy), mx = 2.6 * h;
+        const dx = d.tx - d.x, dy = 0, dist = Math.abs(dx), mx = 2.4 * h;
         const mvx = dist > mx ? (dx / dist) * mx : dx, mvy = dist > mx ? (dy / dist) * mx : dy;
         d.vx = mvx / h; d.vy = mvy / h; d.x += mvx; d.y += mvy;
       }
       if (t < m.freeze) continue;
       const k2 = m.pk;
       k2.x += k2.vx * h; k2.y += k2.vy * h;
-      const fr = Math.exp(-0.35 * h); k2.vx *= fr; k2.vy *= fr;
+      // الطابة ما بتوقف أبداً، وكل ما طوّلتوا بتسرع
+      { const want = Math.min(2.4, 0.95 + m.t * 0.025), sp0 = Math.hypot(k2.vx, k2.vy) || 1; const sp = sp0 < want ? want : sp0 * Math.exp(-0.3 * h); k2.vx *= sp / sp0; k2.vy *= sp / sp0;
+        if (Math.abs(k2.vy) < 0.35 * sp) { k2.vy = Math.sign(k2.vy || 1) * 0.35 * sp; k2.vx = Math.sign(k2.vx || 1) * Math.sqrt(Math.max(0, sp * sp - k2.vy * k2.vy)); } }
       if (k2.x < KR) { k2.x = KR; k2.vx = Math.abs(k2.vx) * 0.9; }
       if (k2.x > HW - KR) { k2.x = HW - KR; k2.vx = -Math.abs(k2.vx) * 0.9; }
       const inMouth = Math.abs(k2.x - 0.5) < GW / 2;
@@ -780,45 +780,43 @@ class Hockey extends Bracket {
 // 12) الدبكة — اللويّح هو الموبايل
 const MOVES = ['R', 'L', 'D'];
 class Dabke extends ElimGame {
-  // كل لاعب إله 3 غلطات. السرعة بتزيد والوقت المسموح بيضيق كل ما طوّلوا.
+  // بتطلع إشارة وحدة بس (يمين / فوق / شمال)، وبتكبسها فوراً. كل لاعب إله 3 غلطات، وكل ما طوّلتوا بتسرع.
   constructor(ctx) { super(ctx); this.beats = []; this.press = {}; this.judged = 0; this.t0 = 0; this.errs = {}; this.ids.forEach((p) => (this.errs[p] = 0)); this.lastErr = {}; }
   get realtime() { return true; }
   start() {
-    this.t0 = now() + 3000; this.msg = 'دبكوا عالإيقاع! معك 3 غلطات';
-    let t = this.t0; let last = 'D';
-    for (let i = 0; i < 600; i++) {
-      const bpm = Math.min(200, 84 + i * 1.3 + Math.max(0, i - 60) * 0.6);
-      let mv; if (i < 4) mv = 'D'; else { mv = MOVES[rint(0, 2)]; if (Math.random() < Math.max(0.1, 0.35 - i * 0.003)) mv = last; }
+    this.t0 = now() + 3000; this.msg = 'بس تطلع الإشارة… اكبسها! معك 3 غلطات';
+    let t = this.t0; let last = '';
+    for (let i = 0; i < 500; i++) {
+      let mv; do { mv = MOVES[rint(0, 2)]; } while (mv === last && Math.random() < 0.6);
       last = mv;
-      const win = Math.max(95, 240 - i * 1.6);
-      this.beats.push({ i, at: Math.round(t), mv, win, pr: i < 4 });
-      t += 60000 / bpm;
+      const win = Math.max(480, 1400 - i * 14);                   // الوقت المسموح للكبسة بيضيق
+      const gap = Math.max(250, 600 - i * 6);                     // والراحة بين الإشارات بتقصر
+      this.beats.push({ i, at: Math.round(t), mv, win, pr: i < 3 });
+      t += win + gap;
     }
   }
   input(pid, msg) {
     if (msg.a !== 'step' || !this.alive.has(pid)) return;
     const at = +msg.at || now();
-    const b = this.beats.find((x) => Math.abs(x.at - at) <= x.win);
-    if (!b) { // كبسة برّا الإيقاع = غلطة عالدقة الأقرب
-      const nb = this.beats.find((x) => x.i >= this.judged && x.at > at - 400);
-      if (nb) { const k = pid + ':' + nb.i; if (!this.press[k]) this.press[k] = { mv: 'X' }; }
-      return;
-    }
-    if (b.i < this.judged) return;
-    const k = pid + ':' + b.i; if (this.press[k]) { this.press[k] = { mv: 'X' }; return; }   // كبستين عنفس الدقة = غلط
+    const b = this.beats.find((x) => at >= x.at - 60 && at <= x.at + x.win);
+    if (!b || b.i < this.judged) return;                           // كبسة بين الإشارات ما بتنحسب
+    const k = pid + ':' + b.i; if (this.press[k]) return;          // أول كبسة بس بتنحسب
     this.press[k] = { mv: msg.v, d: at - b.at };
   }
   tick() {
     if (this.done) return;
     const t = now();
-    while (this.judged < this.beats.length && t > this.beats[this.judged].at + this.beats[this.judged].win + 120) {
+    while (this.judged < this.beats.length && t > this.beats[this.judged].at + this.beats[this.judged].win + 150) {
       const b = this.beats[this.judged];
       const al = [...this.alive];
       const miss = al.filter((p) => { const pr = this.press[p + ':' + b.i]; return !pr || pr.mv !== b.mv; });
       if (!b.pr && miss.length && miss.length < al.length) {
         miss.forEach((p) => { this.errs[p]++; this.lastErr[p] = t; });
         const outs = miss.filter((p) => this.errs[p] >= 3);
-        if (outs.length) this.eliminate(outs, 'خلصت غلطاته');
+        if (outs.length) {
+          if (outs.length >= al.length) { /* ما بيطلعوا الكل */ }
+          else this.eliminate(outs, 'خلصت غلطاته');
+        }
       }
       this.judged++;
       if (this.done) return;
@@ -826,8 +824,8 @@ class Dabke extends ElimGame {
     if (this.judged >= this.beats.length) this.finish();
   }
   view() {
-    const from = Math.max(0, this.judged - 2);
-    return Object.assign(this.baseView(), { kind: 'dabke', t0: this.t0, judged: this.judged, beats: this.beats.slice(from, from + 12), errs: this.errs, lastErr: this.lastErr, lives: 3 });
+    const from = Math.max(0, this.judged - 1);
+    return Object.assign(this.baseView(), { kind: 'dabke', t0: this.t0, judged: this.judged, beats: this.beats.slice(from, from + 4), errs: this.errs, lastErr: this.lastErr, lives: 3 });
   }
 }
 

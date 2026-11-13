@@ -1,5 +1,5 @@
 // تخزين الملفات الثابتة لتشتغل اللعبة كتطبيق حتى لو النت ضعيف
-const V = 'akw-v5';
+const V = 'akw-v6';
 const FILES = ['/', '/index.html', '/style.css', '/app.js', '/draw.js', '/games-ui.js', '/story.js', '/sound.js', '/vendor/qrcode.js', '/manifest.json', '/icons/icon-192.png', '/icons/icon-512.png',
   '/fonts/lalezar-ar.woff2', '/fonts/lalezar-la.woff2',
   '/fonts/plex-ar-400.woff2', '/fonts/plex-ar-600.woff2', '/fonts/plex-ar-700.woff2',

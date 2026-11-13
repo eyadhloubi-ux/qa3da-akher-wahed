@@ -89,15 +89,14 @@ function later(room, ms, fn) { const h = setTimeout(() => { room.timers = room.t
 function clearTimers(room) { room.timers.forEach(clearTimeout); room.timers = []; }
 
 // ───────── الترتيب والنقاط ─────────
-// مجموعات الطالعين بالترتيب (الأخيرة = الفايزين). المتعادلين بيتقاسموا نقاط مراكزهن بالتساوي.
+// مجموعات الطالعين بالترتيب (الأخيرة = آخر من ضل). آخر واحد بياخد 5، اللي قبله 4… واللي طلعوا سوا بياخدوا نقاط أحسن مركز بيناتهن.
 function rankFromGroups(groups) {
   const total = groups.reduce((s, g) => s + g.length, 0);
   const res = [];
   let worst = total;
   for (const g of groups) {
     const best = worst - g.length + 1;
-    let sum = 0; for (let pos = best; pos <= worst; pos++) sum += POINTS[pos] || 0;
-    const pts = Math.round((sum / g.length) * 100) / 100;
+    const pts = POINTS[best] || 0;          // اللي طلعوا سوا بياخدوا نقاط مركزهن (بلا كسور)
     g.forEach((id) => res.push({ id, pos: best, pts }));
     worst = best - 1;
   }
