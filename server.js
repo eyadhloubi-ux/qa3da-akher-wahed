@@ -51,7 +51,7 @@ function makeRoom(host, sess) {
   const code = newCode();
   const room = {
     code, created: now(), hostId: null, name: cleanName(sess.name, 30) || 'قعدتنا', type: cleanName(sess.type, 20) || 'شلة',
-    count: Math.max(3, Math.min(12, +sess.count || 6)), groupPhoto: '', groupPhotoVer: 0,
+    games: Object.keys(GAMES), groupPhoto: '', groupPhotoVer: 0,
     players: new Map(), order: 0, phase: 'lobby', played: [], cur: null, wheel: null, reveal: null, ready: new Set(), seq: 0, timers: [],
   };
   rooms.set(code, room);
@@ -72,7 +72,7 @@ function pubPlayer(p) { return { id: p.id, name: p.name, gender: p.gender, color
 
 function roomView(room) {
   return {
-    code: room.code, hostId: room.hostId, name: room.name, type: room.type, count: room.count, groupPhotoVer: room.groupPhoto ? room.groupPhotoVer : 0,
+    code: room.code, hostId: room.hostId, name: room.name, type: room.type, count: room.games.length, games: room.games, groupPhotoVer: room.groupPhoto ? room.groupPhotoVer : 0,
     players: [...room.players.values()].map(pubPlayer), phase: room.phase, seq: room.seq,
     played: room.played.filter((g) => !g.cancelled).map((g) => ({ gid: g.gid, rank: g.rank })),
     cur: room.cur ? { gid: room.cur.gid, ids: room.cur.ids, stage: room.cur.stage, startAt: room.cur.startAt, rank: room.cur.rank || null, n: room.cur.n } : null,
@@ -116,14 +116,12 @@ function playedIds(room) { return room.played.filter((g) => !g.cancelled).map((g
 function spinWheel(room, exclude) {
   clearTimers(room);
   const done = playedIds(room);
-  if (done.length >= room.count) return toReveal(room);
-  let pool = GAME_IDS.filter((g) => !done.includes(g) && g !== exclude);
-  if (!pool.length) pool = GAME_IDS.filter((g) => !done.includes(g));
+  const pool = room.games.filter((g) => !done.includes(g) && g !== exclude);
   if (!pool.length) return toReveal(room);
   let gid = pool[Math.floor(Math.random() * pool.length)];
   if (process.env.FORCE_ORDER) { const f = process.env.FORCE_ORDER.split(',').find((g) => pool.includes(g)); if (f) gid = f; }   // للفحص فقط
   room.phase = 'wheel'; room.cur = null; room.ready.clear();
-  room.wheel = { gid, idx: GAME_IDS.indexOf(gid), startAt: now() + 400, dur: 5200, turns: 5 + Math.floor(Math.random() * 3), jitter: Math.random() * 0.6 - 0.3, done: done.slice(), n: done.length + 1 };
+  room.wheel = { gid, idx: GAME_IDS.indexOf(gid), startAt: now() + 400, dur: 5200, turns: 5 + Math.floor(Math.random() * 3), jitter: Math.random() * 0.6 - 0.3, done: done.slice(), off: GAME_IDS.filter((g) => !room.games.includes(g)), n: done.length + 1 };
   pushRoom(room);
   later(room, 400 + 5200 + 1600, () => toIntro(room, gid));
 }
@@ -227,7 +225,7 @@ function revealTick(room) {
 
 function resetSession(room, keepPlayers) {
   clearTimers(room); stopLoop(room);
-  room.played = []; room.cur = null; room.wheel = null; room.reveal = null; room.ready.clear(); room.phase = 'lobby';
+  room.played = []; room.cur = null; room.wheel = null; room.reveal = null; room.ready.clear(); room.phase = 'lobby'; room.games = (room.sel || Object.keys(GAMES)).slice();
   if (!keepPlayers) { for (const p of [...room.players.values()]) if (p.id !== room.hostId) { send(p.ws, { t: 'kicked', why: 'new' }); room.players.delete(p.id); } room.groupPhoto = ''; room.groupPhotoVer++; }
   recomputeTotals(room);
   bump('sessions');
@@ -343,14 +341,16 @@ function handle(ws, m) {
     case 'session': {
       if (m.name !== undefined) room.name = cleanName(m.name, 30) || room.name;
       if (m.type !== undefined) room.type = cleanName(m.type, 20) || room.type;
-      if (m.count !== undefined && room.phase === 'lobby') room.count = Math.max(3, Math.min(12, +m.count || room.count));
+      if (Array.isArray(m.games) && room.phase === 'lobby') { const sel = GAME_IDS.filter((g) => m.games.includes(g)); if (sel.length) { room.games = sel; room.sel = sel.slice(); } }
       if (m.groupPhoto !== undefined) { room.groupPhoto = cleanPhoto(m.groupPhoto); room.groupPhotoVer++; broadcast(room, { t: 'gphoto', v: room.groupPhotoVer, data: room.groupPhoto }); }
       return pushRoom(room);
     }
     case 'start': { if (room.phase === 'lobby' && onlineIds(room).length >= 2) spinWheel(room); return; }
     case 'begin': return beginGame(room);
-    case 'skip': { // مرّر: لعبة تانية من الدولاب
+    case 'skip': { // مرّر: هاللعبة بتنشال من القائمة وبيلفّ الدولاب على غيرها
+      if (room.phase === 'wheel' && room.wheel) { const gid = room.wheel.gid; room.games = room.games.filter((g) => g !== gid); return spinWheel(room); }
       if (!room.cur) return; const gid = room.cur.gid; stopLoop(room);
+      room.games = room.games.filter((g) => g !== gid);
       if (room.cur.stage === 'over') { const last = room.played[room.played.length - 1]; if (last && last.gid === gid) room.played.pop(); }
       recomputeTotals(room); return spinWheel(room, gid);
     }

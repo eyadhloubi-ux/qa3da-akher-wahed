@@ -221,35 +221,43 @@ class RPS extends Bracket {
 
 // 3) معركة المخدّات
 class Pillow extends Bracket {
-  initMatch(m) { m.st = {}; m.ps.forEach((p) => (m.st[p] = { hp: 3, wind: 0, block: 0, bcd: 0, cd: 0, hit: 0, bounce: 0 })); m.max = 35; m.sudden = false; }
+  // الحالة مستمرة: يا عم يضرب (ضربة كل ثانية لحالها) يا صادد. الصدّ إله نَفَس 3 ثواني وبيرجع يتعبّى وهو عم يضرب.
+  initMatch(m) { m.st = {}; m.ps.forEach((p) => (m.st[p] = { hp: 3, mode: 'blk', wind: 0, next: 0, stam: 3, tired: false, hit: 0, blocked: 0, tg: 0 })); m.max = 40; m.sudden = false; }
+  onFightStart(m) { const t = now(); m.ps.forEach((p, i) => { m.st[p].mode = 'atk'; m.st[p].next = t + 400 + i * 150; }); }
   matchInput(m, pid, msg) {
-    const s = m.st[pid]; const t = now();
-    if (msg.a === 'atk' && !s.wind && t >= s.cd && t >= s.block) s.wind = t + 550;
-    if (msg.a === 'blk' && !s.wind && t >= s.bcd) { s.block = t + 450; s.bcd = t + 1350; }
+    const s = m.st[pid];
+    if (msg.a === 'mode' && (msg.v === 'atk' || msg.v === 'blk')) {
+      if (msg.v === 'blk' && s.tired) return;
+      if (msg.v === 'blk') s.wind = 0;
+      if (msg.v === 'atk' && s.mode !== 'atk') s.next = Math.max(s.next, now() + 150);
+      s.mode = msg.v;
+    }
   }
-  tickMatch(m) {
+  tickMatch(m, dt) {
     const t = now();
     for (const p of m.active.slice()) {
       const s = m.st[p];
+      if (s.mode === 'blk') { s.stam -= dt; if (s.stam <= 0) { s.stam = 0; s.tired = true; s.mode = 'atk'; s.next = t + 200; } }
+      else { s.stam = Math.min(3, s.stam + dt * 1.2); if (s.tired && s.stam >= 1.2) s.tired = false; }
+      if (s.mode !== 'atk') continue;
+      if (!s.wind && t >= s.next) s.wind = t + 500;                 // المخدة فوق نص ثانية
       if (s.wind && t >= s.wind) {
-        s.wind = 0; s.cd = t + 500;
-        const targets = m.active.filter((q) => q !== p);
-        let bounced = false;
-        targets.forEach((q) => { const o = m.st[q]; if (t < o.block) bounced = true; else { o.hp--; o.hit = t + 400; } });
-        if (bounced) { s.hp--; s.bounce = t + 500; }
-        for (const q of m.active.slice()) if (m.st[q].hp <= 0) this.knock(m, q);
-        if (m.done) return;
+        s.wind = 0; s.next = t + 500;                                  // كل ثانية ضربة
+        const opp = m.active.filter((q) => q !== p); if (!opp.length) continue;
+        const q = opp[s.tg++ % opp.length]; const o = m.st[q];
+        if (o.mode === 'blk') o.blocked = t + 450;
+        else { o.hp--; o.hit = t + 400; if (o.hp <= 0) { this.knock(m, q); if (m.done) return; } }
       }
     }
     if (m.t >= m.max) {
       const top = Math.max(...m.active.map((p) => m.st[p].hp));
       const best = m.active.filter((p) => m.st[p].hp === top);
       if (best.length === 1) this.endMatch(m, best[0]);
-      else if (!m.sudden) { m.sudden = true; m.max += 15; m.active.forEach((p) => { if (m.st[p].hp < top) this.knock(m, p); else m.st[p].hp = 1; }); }
+      else if (!m.sudden) { m.sudden = true; m.max += 15; m.active.slice().forEach((p) => { if (m.st[p].hp < top) this.knock(m, p); else m.st[p].hp = 1; }); }
       else this.endMatch(m, best[rint(0, best.length - 1)]);
     }
   }
-  matchView(m) { const o = {}; for (const p of m.ps) { const s = m.st[p]; o[p] = { hp: s.hp, wind: s.wind, block: s.block, bcd: s.bcd, cd: s.cd, hit: s.hit, bounce: s.bounce }; } return { st: o, max: m.max, sudden: m.sudden }; }
+  matchView(m) { const o = {}; for (const p of m.ps) { const s = m.st[p]; o[p] = { hp: s.hp, mode: s.mode, wind: s.wind, stam: Math.round(s.stam * 100) / 100, tired: s.tired, hit: s.hit, blocked: s.blocked }; } return { st: o, max: m.max, sudden: m.sudden }; }
 }
 
 // 4) النفخ
@@ -282,30 +290,37 @@ class Blow extends Bracket {
 
 // 5) حرب الشحاطات
 class Slipper extends Bracket {
-  initMatch(m) { m.st = {}; m.ps.forEach((p, i) => (m.st[p] = { hits: 0, hide: 0, hcd: 0, tcd: 0, phase: Math.random() * 6.28, per: rnd(1.5, 1.9) })); m.fly = []; m.max = 40; m.sudden = false; m.t0 = now(); }
-  aim(m, p, t) { const s = m.st[p]; return Math.sin(((t - m.t0) / 1000) * (2 * Math.PI) / s.per + s.phase); }
-  targetsOf(m, p) { // موقع كل خصم على مدى السهم
-    const opp = m.active.filter((q) => q !== p);
-    if (opp.length === 1) return [{ id: opp[0], at: 0, w: 0.34 }];
-    return [{ id: opp[0], at: -0.55, w: 0.3 }, { id: opp[1], at: 0.55, w: 0.3 }];
-  }
+  // الحالة مستمرة: يا متخبّي ورا الكنباية يا عم يشلف (شحاطة كل ثانية لحالها). التخبّي إله نَفَس 3 ثواني.
+  initMatch(m) { m.st = {}; m.ps.forEach((p) => (m.st[p] = { hits: 0, mode: 'hide', next: 0, stam: 3, tired: false, tg: 0, hitAt: 0 })); m.fly = []; m.max = 40; m.sudden = false; }
+  onFightStart(m) { const t = now(); m.ps.forEach((p, i) => { m.st[p].mode = 'throw'; m.st[p].next = t + 300 + i * 200; }); }
   matchInput(m, pid, msg) {
-    const s = m.st[pid]; const t = now();
-    if (msg.a === 'hide' && t >= s.hcd) { s.hide = t + 700; s.hcd = t + 1700; }
-    if (msg.a === 'throw' && t >= s.tcd && t >= s.hide) {
-      s.tcd = t + 1000;
-      const a = this.aim(m, pid, t - 80);
-      const tg = this.targetsOf(m, pid).find((x) => Math.abs(a - x.at) <= x.w);
-      m.fly.push({ from: pid, to: tg ? tg.id : null, aim: a, at: t, land: t + 800 });
+    const s = m.st[pid];
+    if (msg.a === 'mode' && (msg.v === 'hide' || msg.v === 'throw')) {
+      if (msg.v === 'hide' && s.tired) return;
+      if (msg.v === 'throw' && s.mode !== 'throw') s.next = Math.max(s.next, now() + 120);
+      s.mode = msg.v;
     }
   }
-  tickMatch(m) {
+  tickMatch(m, dt) {
     const t = now();
+    for (const p of m.active.slice()) {
+      const s = m.st[p];
+      if (s.mode === 'hide') { s.stam -= dt; if (s.stam <= 0) { s.stam = 0; s.tired = true; s.mode = 'throw'; s.next = Math.max(s.next, t + 200); } }
+      else { s.stam = Math.min(3, s.stam + dt * 1.2); if (s.tired && s.stam >= 1.2) s.tired = false; }
+      if (s.mode === 'throw' && t >= s.next) {
+        s.next = t + 1000;                                            // شحاطة كل ثانية
+        const opp = m.active.filter((q) => q !== p); if (!opp.length) continue;
+        const open = opp.filter((q) => m.st[q].mode !== 'hide');
+        const to = open.length ? open[s.tg++ % open.length] : opp[s.tg++ % opp.length];
+        m.fly.push({ from: p, to, at: t, land: t + 750 });
+      }
+    }
     for (const f of m.fly) {
       if (f.res || t < f.land) continue;
-      if (!f.to || !m.active.includes(f.to)) { f.res = 'miss'; continue; }
+      if (!m.active.includes(f.to)) { f.res = 'miss'; continue; }
       const o = m.st[f.to];
-      if (t < o.hide) f.res = 'block'; else { f.res = 'hit'; o.hits++; o.hitAt = t; if (o.hits >= 3) this.knock(m, f.to); if (m.done) return; }
+      if (o.mode === 'hide') f.res = 'block';
+      else { f.res = 'hit'; o.hits++; o.hitAt = t; if (o.hits >= 3) { this.knock(m, f.to); if (m.done) return; } }
     }
     m.fly = m.fly.filter((f) => !f.res || t - f.land < 900);
     if (m.t >= m.max) {
@@ -316,7 +331,7 @@ class Slipper extends Bracket {
       else this.endMatch(m, best[rint(0, best.length - 1)]);
     }
   }
-  matchView(m) { const o = {}; for (const p of m.ps) { const s = m.st[p]; o[p] = { hits: s.hits, hide: s.hide, hcd: s.hcd, tcd: s.tcd, phase: s.phase, per: s.per, hitAt: s.hitAt || 0 }; } return { st: o, fly: m.fly.map((f) => ({ from: f.from, to: f.to, aim: f.aim, at: f.at, land: f.land, res: f.res || null })), t0: m.t0, max: m.max, sudden: m.sudden }; }
+  matchView(m) { const o = {}; for (const p of m.ps) { const s = m.st[p]; o[p] = { hits: s.hits, mode: s.mode, stam: Math.round(s.stam * 100) / 100, tired: s.tired, next: s.next, hitAt: s.hitAt }; } return { st: o, fly: m.fly.map((f) => ({ from: f.from, to: f.to, at: f.at, land: f.land, res: f.res || null })), max: m.max, sudden: m.sudden }; }
 }
 
 // ───────────────────────── ساحة حركة (جويستيك) ─────────────────────────
@@ -446,10 +461,13 @@ class Push extends ElimGame {
   }
   tick(dt) {
     if (this.done) return;
-    if (!this.go) { if (now() >= this.goAt) this.go = true; else return; }
+    if (!this.go) { if (now() >= this.goAt) { this.go = true; this.goTime = now(); } else return; }
     this.t += dt;
-    const shrink = this.t < 70 ? (this.t / 70) * 0.09 : 0.09 + (this.t - 70) * 0.012;
-    this.R = Math.max(0.1, this.R0 - shrink);
+    // كل 20 ثانية الدائرة بتصغر درجة، لحد ما يضل آخر واحد
+    const steps = Math.floor(this.t / 20);
+    const target = Math.max(0.015, this.R0 - steps * 0.06);
+    this.R += (target - this.R) * Math.min(1, dt * 2.5);
+    this.nextShrink = this.goTime + (steps + 1) * 20000;
     const al = [...this.alive];
     for (const id of al) {
       const s = this.p[id];
@@ -474,7 +492,7 @@ class Push extends ElimGame {
   }
   view() {
     const o = {}; for (const id of this.ids) { const s = this.p[id]; if (!s) continue; o[id] = { x: +s.x.toFixed(4), y: +s.y.toFixed(4), ang: +s.ang.toFixed(3), charge: s.charge, cd: s.cd, fall: s.fall, dash: s.dash || 0, bump: s.bump || 0 }; }
-    return Object.assign(this.baseView(), { kind: 'push', R: +this.R.toFixed(4), pr: this.pr, p: o, go: this.go, goAt: this.goAt });
+    return Object.assign(this.baseView(), { kind: 'push', R: +this.R.toFixed(4), pr: this.pr, p: o, go: this.go, goAt: this.goAt, nextShrink: this.nextShrink || 0 });
   }
 }
 
@@ -649,26 +667,32 @@ class Cowboy extends ElimGame {
 // 12) الدبكة — اللويّح هو الموبايل
 const MOVES = ['R', 'L', 'D'];
 class Dabke extends ElimGame {
-  constructor(ctx) { super(ctx); this.beats = []; this.press = {}; this.judged = 0; this.t0 = 0; this.bpm = 84; }
+  // كل لاعب إله 3 غلطات. السرعة بتزيد والوقت المسموح بيضيق كل ما طوّلوا.
+  constructor(ctx) { super(ctx); this.beats = []; this.press = {}; this.judged = 0; this.t0 = 0; this.errs = {}; this.ids.forEach((p) => (this.errs[p] = 0)); this.lastErr = {}; }
   get realtime() { return true; }
   start() {
-    this.t0 = now() + 3000; this.msg = 'دبكوا عالإيقاع!';
+    this.t0 = now() + 3000; this.msg = 'دبكوا عالإيقاع! معك 3 غلطات';
     let t = this.t0; let last = 'D';
-    for (let i = 0; i < 400; i++) {
-      const bpm = Math.min(156, 84 + i * 1.1);
-      let mv; if (i < 4) mv = 'D'; else { mv = MOVES[rint(0, 2)]; if (Math.random() < 0.35) mv = last; }
+    for (let i = 0; i < 600; i++) {
+      const bpm = Math.min(200, 84 + i * 1.3 + Math.max(0, i - 60) * 0.6);
+      let mv; if (i < 4) mv = 'D'; else { mv = MOVES[rint(0, 2)]; if (Math.random() < Math.max(0.1, 0.35 - i * 0.003)) mv = last; }
       last = mv;
-      const win = Math.max(140, 240 - i * 1.4);
-      this.beats.push({ i, at: Math.round(t), mv, win });
+      const win = Math.max(95, 240 - i * 1.6);
+      this.beats.push({ i, at: Math.round(t), mv, win, pr: i < 4 });
       t += 60000 / bpm;
     }
   }
   input(pid, msg) {
     if (msg.a !== 'step' || !this.alive.has(pid)) return;
-    const at = +msg.at || now();                 // وقت السيرفر حسب ساعة الموبايل المضبوطة
+    const at = +msg.at || now();
     const b = this.beats.find((x) => Math.abs(x.at - at) <= x.win);
-    if (!b || b.i < this.judged) return;
-    const k = pid + ':' + b.i; if (this.press[k]) return;
+    if (!b) { // كبسة برّا الإيقاع = غلطة عالدقة الأقرب
+      const nb = this.beats.find((x) => x.i >= this.judged && x.at > at - 400);
+      if (nb) { const k = pid + ':' + nb.i; if (!this.press[k]) this.press[k] = { mv: 'X' }; }
+      return;
+    }
+    if (b.i < this.judged) return;
+    const k = pid + ':' + b.i; if (this.press[k]) { this.press[k] = { mv: 'X' }; return; }   // كبستين عنفس الدقة = غلط
     this.press[k] = { mv: msg.v, d: at - b.at };
   }
   tick() {
@@ -678,7 +702,11 @@ class Dabke extends ElimGame {
       const b = this.beats[this.judged];
       const al = [...this.alive];
       const miss = al.filter((p) => { const pr = this.press[p + ':' + b.i]; return !pr || pr.mv !== b.mv; });
-      if (miss.length && miss.length < al.length) this.eliminate(miss, 'غلط بالخطوة');
+      if (!b.pr && miss.length && miss.length < al.length) {
+        miss.forEach((p) => { this.errs[p]++; this.lastErr[p] = t; });
+        const outs = miss.filter((p) => this.errs[p] >= 3);
+        if (outs.length) this.eliminate(outs, 'خلصت غلطاته');
+      }
       this.judged++;
       if (this.done) return;
     }
@@ -686,7 +714,7 @@ class Dabke extends ElimGame {
   }
   view() {
     const from = Math.max(0, this.judged - 2);
-    return Object.assign(this.baseView(), { kind: 'dabke', t0: this.t0, judged: this.judged, beats: this.beats.slice(from, from + 10) });
+    return Object.assign(this.baseView(), { kind: 'dabke', t0: this.t0, judged: this.judged, beats: this.beats.slice(from, from + 12), errs: this.errs, lastErr: this.lastErr, lives: 3 });
   }
 }
 

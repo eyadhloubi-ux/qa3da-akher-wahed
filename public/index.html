@@ -21,6 +21,7 @@
       <button class="ib" id="btnTheme" title="فاتح/داكن">🌙</button>
       <button class="ib" id="btnHelp" title="كيف منلعب؟">؟</button>
       <button class="ib" id="btnHome" title="القعدة">⌂</button>
+      <button class="ib host-only hide" id="btnPlayers" title="اللاعبين">👥</button>
     </div>
   </header>
   <div id="net" class="hide">عم نرجّعك عالقعدة…</div>
@@ -96,13 +97,13 @@
       </div>
       <div class="card" id="hostBox">
         <h3>إعدادات الريس</h3>
-        <label class="lbl">كم لعبة منلعب؟</label>
-        <div class="stepper"><button id="cntMinus">−</button><b id="cntVal">6</b><button id="cntPlus">+</button></div>
+        <div class="row between"><label class="lbl">شو منلعب؟ <small class="muted">(دقّ عاللعبة لتشيلها)</small></label><button class="btn sm" id="gAll">الكل</button></div>
+        <div class="gsel" id="gSel"></div>
         <div class="row wrap"><button class="btn sm" id="editSess">اسم القعدة ونوعها</button><button class="btn sm" id="gpGallery">صورة الشلة</button><button class="btn sm" id="gpSelfie">صورة سيلفي للشلة</button></div>
         <button class="btn big pri wide" id="startBtn">لفّ الدولاب!</button>
         <p class="muted sm center" id="startHint">لازم يكون في لاعبين عالأقل</p>
       </div>
-      <div class="card hide" id="guestWait"><p class="center">استنى الريس يلفّ الدولاب… 🎡</p><button class="btn sm wide" id="editMe">عدّل اسمي وصورتي</button></div>
+      <div class="card hide" id="guestWait"><p class="center">استنى الريس يلفّ الدولاب… 🎡</p><div class="gsel ro" id="gSelG"></div><button class="btn sm wide" id="editMe">عدّل اسمي وصورتي</button></div>
     </div>
   </section>
 

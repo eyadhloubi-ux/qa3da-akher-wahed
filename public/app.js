@@ -8,15 +8,15 @@
     tug: { name: 'شدّ الحبل', icon: '🪢', how: 'كل اتنين ضد بعض. كبس «شدّ!» بأسرع ما فيك لتسحب الحبل لعندك. الخسرانين بيطلعوا، وإذا العدد فردي في حبل تلاتي.' },
     island: { name: 'الجزيرة', icon: '🏝️', how: 'لفّوا بالساحة، ولما يطلع رقم تجمّعوا مجموعات بنفس العدد بالضبط. اللي بيضل برّا الدائرة بيطلع. وبالآخر جزيرة وحدة للأسرع.' },
     rps: { name: 'حجرة ورقة مقص', icon: '✊', how: 'كل اتنين ضد بعض، اللي بيربح مرتين بيكمّل. بالتلاتية بتضلّوا تلعبوا لحد ما واحد يغلب التنين سوا.' },
-    push: { name: 'الدفش', icon: '💥', how: 'السهم بيلف حواليك. اضغط مطوّل لتوقفه وتشحن قوة، وفلّت لتندفش باتجاهه. طيّر غيرك برّا الحلبة… وانتبه ما تطلع لحالك!' },
+    push: { name: 'الدفش', icon: '💥', how: 'السهم بيلف حواليك. اضغط مطوّل لتوقفه وتشحن قوة، وفلّت لتندفش باتجاهه. طيّر غيرك برّا الحلبة… وانتبه ما تطلع لحالك! وكل 20 ثانية الحلبة بتصغر.' },
     bomb: { name: 'القنبلة', icon: '💣', how: 'كلكن حاطين إصبعكن. أول واحد بيشيل بيطلع، واللي بيضل حاطط لما تنفجر بيطلع كمان. شيل قبل الانفجار… بس مو أول واحد.' },
     auction: { name: 'المزاد الأخير', icon: '🔨', how: 'معك رصيد للعبة كلها. كل جولة زايد بالسر، والأقل مزايدة بيطلع. كل واحد بيدفع اللي زايد فيه، والأعلى بيرجعلو نص الفرق عن التاني.' },
     cowboy: { name: 'الكاوبوي', icon: '🤠', how: 'استنّى إشارة «اسحب!». أول واحد بيكبس بعدها بيختار مين يطلّع. واللي بيكبس قبل الإشارة بيطلع هو.' },
-    pillow: { name: 'معركة المخدّات', icon: '🛋️', how: 'كل اتنين على قلطق. «اضرب» بترفع المخدة وبتنزل، و«صدّ» بالتوقيت الصح بتردّ الضربة عليه. 3 ضربات وبتطير.' },
+    pillow: { name: 'معركة المخدّات', icon: '🛋️', how: 'كل اتنين على قلطق. يا عم تضرب (ضربة كل ثانية لحالها) يا صادد. لما تشوف مخدّته فوق صدّ، والصدّ نَفَسه 3 ثواني. 3 ضربات وبتطير.' },
     tag: { name: 'تخليص', icon: '🏃', how: 'المسّاك هو الموبايل نفسه. حرّك شخصيتك واهرب منه بالساحة. اللي بيمسكه بيطلع، وآخر واحد بيضل هو الفايز.' },
     blow: { name: 'النفخ', icon: '🌬️', how: 'كل اتنين مقابل بعض وبيناتكن ريشة. انفخوا عالمايك بنفس الوقت، والأقوى بيزحلها لعند التاني. اللي بتوصلو الريشة بيطلع.' },
-    slipper: { name: 'حرب الشحاطات', icon: '🩴', how: 'كل واحد ورا كنباية. ارمي الشحاطة لما السهم يكون بالنص، وتخبّى لما تشوفها جاية. 3 إصابات وبتطلع.' },
-    dabke: { name: 'الدبكة', icon: '🥁', how: 'الكل بصف الدبكة، واللويّح هو الموبايل. اكبس الخطوة الصح (يمين / دبكة / شمال) عالإيقاع بالضبط. اللي بيغلط بيطلع، والسرعة عم تزيد.' },
+    slipper: { name: 'حرب الشحاطات', icon: '🩴', how: 'كل واحد ورا كنباية. يا عم تشلّف (شحاطة كل ثانية لحالها) يا متخبّي، والتخبّي نَفَسه 3 ثواني. لما تشوف الشحاطة جاية تخبّى. 3 إصابات وبتطلع.' },
+    dabke: { name: 'الدبكة', icon: '🥁', how: 'الكل بصف الدبكة، واللويّح هو الموبايل. اكبس الخطوة الصح (يمين / دبكة / شمال) عالإيقاع بالضبط. معك 3 غلطات، وبالتالتة بتطلع. وكل ما طوّلتوا الإيقاع بيسرع وبيصعب.' },
   };
   const GIDS = Object.keys(GAMES);
   const ENC_M = ['حظ أوفر', 'شدّ حيلك', 'الجاية إلك', 'طلعت بكير… بس بشرف', 'المرة الجاية بتكسّرها'];
@@ -263,12 +263,13 @@
     if (S.qrFor !== link) { S.qrFor = link; try { const q = qrcode(0, 'M'); q.addData(link); q.make(); $('#qr').innerHTML = q.createSvgTag({ cellSize: 4, margin: 0, scalable: true }); } catch (e) { $('#qr').textContent = r.code; } }
     $('#lobbyPlayers').innerHTML = r.players.slice().sort((a, b) => a.joined - b.joined).map((p) => `<div class="pl ${p.online ? '' : 'off'}">${p.id === r.hostId ? '<span class="crown">👑</span>' : ''}<div class="head" style="background:${p.color}">${D.photo(p.id) ? `<img src="${D.photo(p.id).src}">` : D.initials(p.name)}</div><div class="nm">${esc(p.name)}${p.id === S.me ? ' (إنت)' : ''}</div></div>`).join('');
     $('#hostBox').classList.toggle('hide', !isHost()); $('#guestWait').classList.toggle('hide', isHost());
-    $('#cntVal').textContent = r.count;
-    $('#startBtn').disabled = on < 2; $('#startHint').textContent = on < 2 ? 'لازم يكون في لاعبين عالأقل' : `${r.count} ألعاب، والدولاب بيختار ترتيبها`;
+    const gsel = (id) => GIDS.map((g) => `<button data-g="${g}" class="${r.games.includes(g) ? 'on' : ''}"><i>${GAMES[g].icon}</i>${GAMES[g].name}</button>`).join('');
+    $('#gSel').innerHTML = gsel(); $('#gSelG').innerHTML = gsel();
+    $$('#gSel button').forEach((b) => (b.onclick = () => { const g = b.dataset.g; let sel = r.games.includes(g) ? r.games.filter((x) => x !== g) : r.games.concat(g); if (!sel.length) return toast('لازم تضل لعبة وحدة عالأقل'); send({ t: 'session', games: sel }); }));
+    $('#startBtn').disabled = on < 2; $('#startHint').textContent = on < 2 ? 'لازم يكون في لاعبين عالأقل' : `${r.games.length} ${r.games.length > 10 || r.games.length < 3 ? 'لعبة' : 'ألعاب'}، والدولاب بيختار ترتيبها`;
     refreshGroup();
   }
-  $('#cntMinus').onclick = () => send({ t: 'session', count: S.room.count - 1 });
-  $('#cntPlus').onclick = () => send({ t: 'session', count: S.room.count + 1 });
+  $('#gAll').onclick = () => send({ t: 'session', games: GIDS.slice() });
   $('#startBtn').onclick = () => { SFX.unlock(); send({ t: 'start' }); };
   $('#copyLink').onclick = async () => { try { await navigator.clipboard.writeText(location.origin + '/?r=' + S.room.code); toast('انتسخ الرابط'); } catch (e) { toast(location.origin + '/?r=' + S.room.code, 5000); } };
   $('#shareLink').onclick = () => { const url = location.origin + '/?r=' + S.room.code; if (navigator.share) navigator.share({ title: 'قعدة آخر واحد', text: `فوت عقعدتنا «${S.room.name}» — الكود ${S.room.code}`, url }).catch(() => {}); else $('#copyLink').click(); };
@@ -281,15 +282,16 @@
 
   // ───── الدولاب ─────
   const SL = ['#E2553D', '#E8A317', '#2A7DE1', '#2BA36B', '#8E5BD8', '#E5689A'];
-  function wheelSvg(done) {
+  function wheelSvg(done, off) {
+    off = off || [];
     let s = '';
     GIDS.forEach((g, i) => {
       const a0 = ((i * 30 - 90) * Math.PI) / 180, a1 = (((i + 1) * 30 - 90) * Math.PI) / 180, R = 100;
       const p0 = [Math.cos(a0) * R, Math.sin(a0) * R], p1 = [Math.cos(a1) * R, Math.sin(a1) * R];
-      const played = done.includes(g);
-      s += `<path d="M0 0 L${p0[0].toFixed(2)} ${p0[1].toFixed(2)} A${R} ${R} 0 0 1 ${p1[0].toFixed(2)} ${p1[1].toFixed(2)} Z" fill="${played ? '#bdb3a4' : SL[i % SL.length]}" stroke="#1E1B18" stroke-width="2"/>`;
+      const played = done.includes(g), gone = off.includes(g);
+      s += `<path d="M0 0 L${p0[0].toFixed(2)} ${p0[1].toFixed(2)} A${R} ${R} 0 0 1 ${p1[0].toFixed(2)} ${p1[1].toFixed(2)} Z" fill="${played || gone ? '#bdb3a4' : SL[i % SL.length]}" stroke="#1E1B18" stroke-width="2"/>`;
       const am = i * 30 + 15;
-      s += `<g transform="rotate(${am}) translate(0 -70)"><text text-anchor="middle" dominant-baseline="central" font-size="${played ? 16 : 22}" fill="#6e6153">${played ? '✔' : GAMES[g].icon}</text></g>`;
+      s += `<g transform="rotate(${am}) translate(0 -70)"><text text-anchor="middle" dominant-baseline="central" font-size="${played || gone ? 16 : 22}" fill="#6e6153">${played ? '✔' : gone ? '✕' : GAMES[g].icon}</text></g>`;
     });
     return `<g id="wheelG">${s}</g><circle r="101" fill="none" stroke="#1E1B18" stroke-width="4"/>`;
   }
@@ -297,7 +299,7 @@
     const w = S.room.wheel; if (!w) return;
     $('#wheelTitle').textContent = `اللعبة ${w.n} من ${S.room.count}`;
     const key = w.startAt + ':' + w.gid; if (S.wheelKey === key) return; S.wheelKey = key;
-    $('#wheelSvg').innerHTML = wheelSvg(w.done); $('#wheelRes').innerHTML = '';
+    $('#wheelSvg').innerHTML = wheelSvg(w.done, w.off); $('#wheelRes').innerHTML = '';
     const final = 360 * w.turns - (w.idx * 30 + 15) + w.jitter * 20;
     const g = $('#wheelG'); let lastSlice = -1, shown = false;
     const anim = () => {
@@ -480,22 +482,24 @@
   $('#installBtn').onclick = async () => { if (deferredInstall) { deferredInstall.prompt(); deferredInstall = null; } else toast('عالآيفون: زر المشاركة ← «إضافة إلى الشاشة الرئيسية»', 5000); };
 
   // ───── زر البيت (القعدة) ─────
-  $('#btnHome').onclick = () => {
+  $('#btnPlayers').onclick = () => openHome(true);
+  $('#btnHome').onclick = () => openHome(false);
+  function openHome(onlyPlayers) {
     const r = S.room; const b = $('#homeBody');
     if (!r || !S.me) { show('cover'); return; }
     const host = isHost(); const cur = r.cur;
-    let h = '<div class="menu">';
+    let h = onlyPlayers ? '<div class="menu hide">' : '<div class="menu">';
     if (host) {
       if (cur && cur.stage === 'play') h += '<button class="btn" data-a="endGame">⏹ سكّر هاللعبة هلّق (كل واحد لوين وصل)</button>';
       if (cur && cur.stage !== 'intro') h += '<button class="btn" data-a="replay">↺ أعد هاللعبة (النتيجة بتنلغى)</button>';
-      if (cur) h += '<button class="btn" data-a="skip">⏭ مرّر هاللعبة</button>';
+      if (cur || r.phase === 'wheel') h += '<button class="btn" data-a="skip">⏭ مرّر هاللعبة (بتنشال من القائمة)</button>';
       if (r.phase !== 'lobby' && r.phase !== 'final' && r.phase !== 'reveal') h += '<button class="btn" data-a="finish">🏁 خلّصنا… رجّينا النتيجة</button>';
       h += '<button class="btn" data-a="same">🔁 قعدة جديدة بنفس الناس</button><button class="btn" data-a="new">✨ قعدة جديدة بناس جدد</button>';
     }
     h += '<button class="btn" data-a="me">✏️ عدّل اسمي وصورتي</button>';
     h += '<button class="btn ghost" data-a="leave">🚪 اطلع من القعدة</button></div>';
     h += `<h3 style="margin-top:14px">اللاعبين (${r.players.length})</h3>`;
-    h += r.players.slice().sort((a, b) => a.joined - b.joined).map((p) => `<div class="pman">${avatarHTML(p.id)}<div class="nm">${esc(p.name)}${p.id === r.hostId ? ' 👑' : ''}<small>${p.online ? 'متصل' : 'مو متصل'} · ${p.total} نقطة</small></div>${host && p.id !== S.me ? `<button class="btn sm" data-ren="${p.id}">اسم</button><button class="btn sm" data-host="${p.id}">ريس</button><button class="btn sm pri" data-kick="${p.id}">طلّعو</button>` : ''}</div>`).join('');
+    h += r.players.slice().sort((a, b) => a.joined - b.joined).map((p) => `<div class="pman">${avatarHTML(p.id)}<div class="nm">${esc(p.name)}${p.id === r.hostId ? ' 👑' : ''}<small>${p.online ? 'متصل' : 'مو متصل'} · ${p.total} نقطة</small></div>${host && p.id !== S.me ? `<button class="btn sm" data-ren="${p.id}">اسم</button><button class="btn sm" data-host="${p.id}">ريس</button><button class="btn sm pri" data-kick="${p.id}">${p.gender === 'f' ? 'طلّعها' : 'طلّعو'}</button>` : ''}</div>`).join('');
     if (!host) { const hp = P(r.hostId); if (hp && !hp.online) h += '<button class="btn wide" data-a="claim">الريس مو متصل… صير إنت الريس</button>'; }
     b.innerHTML = h; modal('mHome', true);
     b.querySelectorAll('[data-a]').forEach((x) => (x.onclick = () => {
@@ -518,7 +522,7 @@
   // ───── التعليمات ─────
   $('#btnHelp').onclick = () => {
     $('#helpBody').innerHTML = `<div class="help"><h3>كيف منلعب «قعدة آخر واحد»؟</h3>
-<p>كل واحد من موبايله. الريس بيفتح القعدة وبيحدد كم لعبة، والدولاب بيختار اللعبة. بكل لعبة اللاعبين بيطلّعوا بعض لحد ما يضل آخر واحد، وبكل لعبة جديدة بيرجع الكل يلعب.</p>
+<p>كل واحد من موبايله. الريس بيفتح القعدة وبيختار الألعاب اللي بدهن (وبيشيل اللي ما بدو ياها)، والدولاب بيختار ترتيبها. بكل لعبة اللاعبين بيطلّعوا بعض لحد ما يضل آخر واحد، وبكل لعبة جديدة بيرجع الكل يلعب.</p>
 <h4>النقاط بكل لعبة</h4><p>الأول 5 · التاني والتالت 3 · الرابع والخامس والسادس 1 · الباقي 0. اللي بيطلعوا سوا بنفس اللحظة بيتقاسموا نقاط مراكزهن بالتساوي. وبالآخر حفلة كشف من الأخير للأول.</p>
 <h4>الألعاب الـ12</h4>${GIDS.map((g) => `<div class="g"><b>${GAMES[g].icon} ${GAMES[g].name}</b><p>${GAMES[g].how}</p></div>`).join('')}
 <h4>للريس</h4><p>من زر ⌂ فوق: طلّع أي لاعب بأي وقت، سلّم الريسة، سكّر اللعبة، أعدها، مرّرها، أو افتح قعدة جديدة بنفس الناس أو بناس جدد. وإذا الريس انقطع، بعد شوي بيصير في ريس جديد لحالو.</p>

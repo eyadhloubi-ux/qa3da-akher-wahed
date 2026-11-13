@@ -19,6 +19,17 @@ const GUI = (() => {
     b.addEventListener('contextmenu', (e) => e.preventDefault());
     el.appendChild(b); return b;
   }
+  // زرّين حالة مستمرة: واحد منهن دايماً شغّال
+  function modeBtns(el, a, b) {
+    el.innerHTML = '';
+    const mk = (o, cls) => btn(el, o.label, o.sub, cls + ' mode', { down: () => { A.send({ a: 'mode', v: o.v }); vib(8); } });
+    return { [a.v]: mk(a, ''), [b.v]: mk(b, 'alt') };
+  }
+  function setMode(bs, mode, stamKey, st) {
+    for (const k in bs) bs[k].classList.toggle('on', k === mode);
+    const hb = bs[stamKey]; if (!hb || !st) return;
+    setCd(hb, 1 - st.stam / 3); hb.classList.toggle('tired', !!st.tired);
+  }
   function setCd(b, frac) { const s = b.querySelector('.cd'); if (s) s.style.transform = `scaleX(${Math.max(0, Math.min(1, frac))})`; }
 
   function joystick(el) {
@@ -168,15 +179,12 @@ const GUI = (() => {
   function pillowAt(c, x, y, s, rot) { c.save(); c.translate(x, y); c.rotate(rot); c.fillStyle = '#F4F1E8'; c.strokeStyle = css().line; c.lineWidth = 2; D.rr(c, -s * 0.9, -s * 0.55, s * 1.8, s * 1.1, s * 0.45); c.fill(); c.stroke(); c.strokeStyle = css().acc; c.lineWidth = 1.5; c.beginPath(); c.moveTo(-s * 0.5, 0); c.lineTo(s * 0.5, 0); c.stroke(); c.restore(); }
   const pillow = {
     controls(el) {
-      el.innerHTML = '';
-      this.b1 = btn(el, 'اضرب 🛋️', 'ارفع المخدة وانزل', '', { down: () => { A.send({ a: 'atk' }); vib(10); } });
-      this.b2 = btn(el, 'صدّ 🛡️', 'بالتوقيت الصح بترتدّ عليه', 'alt', { down: () => { A.send({ a: 'blk' }); vib(6); } });
+      this.bs = modeBtns(el, { v: 'atk', label: 'اضرب 🛋️', sub: 'ضربة كل ثانية لحالها' }, { v: 'blk', label: 'صدّ 🛡️', sub: 'نَفَسك 3 ثواني' });
     },
     update(g) {
-      const m = g.matches && g.matches.find((x) => x.active.includes(A.me)); const now = A.sNow();
+      const m = g.matches && g.matches.find((x) => x.active.includes(A.me));
       if (!m || !m.st) return; const s = m.st[A.me]; if (!s) return;
-      setCd(this.b1, s.wind ? 1 : s.cd > now ? (s.cd - now) / 500 : 0);
-      setCd(this.b2, s.bcd > now ? (s.bcd - now) / 1350 : 0);
+      setMode(this.bs, s.mode, 'blk', s);
     },
     draw(c, w, h, g) {
       D.hara(c, w, h, {}); const now = A.sNow();
@@ -191,11 +199,12 @@ const GUI = (() => {
           const flip = x <= cx ? 1 : -1;
           if (st.hit > now) x += Math.sin(now / 25) * s * 0.25;
           stool(c, x, y, s);
-          let pose = 'idle'; if (out) pose = 'fall'; else if (m.done) pose = 'cheer'; else if (st.wind) pose = 'swing'; else if (st.block > now) pose = 'block'; else if (st.cd > now) pose = 'smash';
+          let pose = 'idle'; if (out) pose = 'fall'; else if (m.done) pose = 'cheer'; else if (st.mode === 'blk') pose = 'block'; else if (st.wind) pose = 'swing'; else pose = 'smash';
           const ch = D.char(c, x, y - s * 0.55, s, P(p), { pose, flip, me: isMe(p), label: false, seed: i, alpha: out ? 0.5 : 1 });
           if (!out) pillowAt(c, ch.hands[0][0], ch.hands[0][1] - (pose === 'swing' ? s * 0.2 : 0), s * 0.7, pose === 'block' ? 1.5 : pose === 'swing' ? -0.6 : 0.4 * flip);
           D.hearts(c, x, ch.top[1] - s * 0.6, st.hp, 3, Math.max(8, s * 0.5));
-          if (st.bounce > now) D.sticker(c, 'ارتدّت!', x, ch.top[1] - s * 1.5, Math.max(10, s * 0.5), css().bad, '#fff', 0.1);
+          if (st.blocked > now) D.sticker(c, 'صدّها!', x, ch.top[1] - s * 1.5, Math.max(10, s * 0.5), css().ok, '#fff', 0.1);
+          if (st.hit > now) D.sticker(c, 'طاخ!', x, ch.top[1] - s * 1.5, Math.max(10, s * 0.5), css().bad, '#fff', -0.1);
           if (r.big) D.txt(c, P(p).name.slice(0, 10), x, y + s * 1.55, 13, { f: 'Plex', w: 700 });
         });
         matchTimer(c, r, m, g); doneMark(c, r, m);
@@ -259,9 +268,8 @@ const GUI = (() => {
   function sofa(c, x, y, s, col) { c.fillStyle = col; c.strokeStyle = css().line; c.lineWidth = 2.5; D.rr(c, x - s * 1.6, y - s * 1.5, s * 3.2, s * 1.5, s * 0.4); c.fill(); c.stroke(); D.rr(c, x - s * 1.9, y - s * 1.8, s * 0.6, s * 1.8, s * 0.3); c.fill(); c.stroke(); D.rr(c, x + s * 1.3, y - s * 1.8, s * 0.6, s * 1.8, s * 0.3); c.fill(); c.stroke(); }
   function slipperAt(c, x, y, s, rot) { c.save(); c.translate(x, y); c.rotate(rot); c.fillStyle = css().acc3; c.strokeStyle = css().line; c.lineWidth = 2; c.beginPath(); c.ellipse(0, 0, s * 0.8, s * 0.38, 0, 0, 7); c.fill(); c.stroke(); c.strokeStyle = '#fff'; c.lineWidth = 2.5; c.beginPath(); c.arc(-s * 0.1, 0, s * 0.25, -1.2, 1.2); c.stroke(); c.restore(); }
   const slipper = {
-    controls(el) { el.innerHTML = ''; this.b1 = btn(el, 'ارمي 🩴', 'لما السهم بالنص', '', { down: () => { A.send({ a: 'throw' }); vib(10); } }); this.b2 = btn(el, 'تخبّى', 'ورا الكنباية', 'alt', { down: () => { A.send({ a: 'hide' }); vib(6); } }); },
-    update(g) { const m = g.matches && g.matches.find((x) => x.active.includes(A.me)); const now = A.sNow(); if (!m || !m.st || !m.st[A.me]) return; const s = m.st[A.me]; setCd(this.b1, s.tcd > now ? (s.tcd - now) / 1000 : 0); setCd(this.b2, s.hcd > now ? (s.hcd - now) / 1700 : 0); },
-    aim(m, p, now) { const s = m.st[p]; return Math.sin(((now - m.t0) / 1000) * (2 * Math.PI) / s.per + s.phase); },
+    controls(el) { this.bs = modeBtns(el, { v: 'throw', label: 'شلّف 🩴', sub: 'شحاطة كل ثانية لحالها' }, { v: 'hide', label: 'تخبّى', sub: 'نَفَسك 3 ثواني' }); },
+    update(g) { const m = g.matches && g.matches.find((x) => x.active.includes(A.me)); if (!m || !m.st || !m.st[A.me]) return; setMode(this.bs, m.st[A.me].mode, 'hide', m.st[A.me]); },
     draw(c, w, h, g) {
       D.hara(c, w, h, { wall: true }); const now = A.sNow();
       for (const r of layout(g.matches, w, h)) {
@@ -274,28 +282,15 @@ const GUI = (() => {
         m.ps.forEach((p, i) => {
           const st = m.st[p]; const [x, y] = pos[i];
           const out = !m.active.includes(p) && !(m.done && m.winner === p);
-          const hide = st.hide > now;
-          const ch = D.char(c, x, y - s * 0.6, s, P(p), { pose: out ? 'fall' : m.done ? 'cheer' : hide ? 'duck' : st.tcd > now && st.tcd - now > 700 ? 'throw' : 'idle', k: 1, flip: x <= cx ? 1 : -1, me: isMe(p), seed: i, alpha: out ? 0.5 : 1 });
+          const hide = st.mode === 'hide';
+          const ch = D.char(c, x, y - s * 0.6, s, P(p), { pose: out ? 'fall' : m.done ? 'cheer' : hide ? 'duck' : st.next - now > 700 ? 'throw' : 'idle', k: 1, flip: x <= cx ? 1 : -1, me: isMe(p), seed: i, alpha: out ? 0.5 : 1 });
           sofa(c, x, y, s, P(p).color);
           D.hearts(c, x, y + s * 0.6, 3 - st.hits, 3, Math.max(8, s * 0.48));
           if (st.hitAt && now - st.hitAt < 600) D.sticker(c, 'طاخ!', x, ch.top[1] - s, Math.max(10, s * 0.6), css().bad, '#fff', -0.1);
-          // سهم التصويب
-          if (m.active.includes(p) && !m.done && g.phase === 'fight' && (isMe(p) || r.big)) {
-            const a = this.aim(m, p, now);
-            const opp = m.active.filter((q) => q !== p);
-            const tx = opp.length === 1 ? where[opp[0]][0] : lerp(where[opp[0]][0], where[opp[1]][0], (a + 1) / 2);
-            const ty = opp.length === 1 ? where[opp[0]][1] - s * 2 : lerp(where[opp[0]][1], where[opp[1]][1], (a + 1) / 2) - s * 2;
-            const sx = x, sy = y - s * 2.6;
-            const ang = Math.atan2(ty - sy, tx - sx) + (opp.length === 1 ? a * 0.55 : 0);
-            const len = s * (isMe(p) ? 3 : 2);
-            c.save(); c.globalAlpha = isMe(p) ? 1 : 0.3; c.strokeStyle = isMe(p) ? css().acc : css().line; c.lineWidth = isMe(p) ? 4 : 2;
-            c.beginPath(); c.moveTo(sx, sy); c.lineTo(sx + Math.cos(ang) * len, sy + Math.sin(ang) * len); c.stroke();
-            c.fillStyle = c.strokeStyle; c.beginPath(); const ex = sx + Math.cos(ang) * len, ey = sy + Math.sin(ang) * len; c.moveTo(ex + Math.cos(ang) * 8, ey + Math.sin(ang) * 8); c.lineTo(ex + Math.cos(ang + 2.4) * 9, ey + Math.sin(ang + 2.4) * 9); c.lineTo(ex + Math.cos(ang - 2.4) * 9, ey + Math.sin(ang - 2.4) * 9); c.fill(); c.restore();
-          }
         });
         for (const f of m.fly) {
           const a = where[f.from]; if (!a) continue;
-          const b = f.to && where[f.to] ? where[f.to] : [a[0] + (cx - a[0]) * 2 + f.aim * r.w * 0.2, a[1] - r.h * 0.1];
+          const b = f.to && where[f.to] ? where[f.to] : [cx, a[1] - r.h * 0.1];
           const k = Math.max(0, Math.min(1, (now - f.at) / (f.land - f.at)));
           if (k >= 1 && f.res) { if (f.res === 'block') D.sticker(c, 'صدّها!', b[0], b[1] - s * 3, Math.max(9, s * 0.45), css().ok, '#fff', 0); continue; }
           const x = lerp(a[0], b[0], k), y = lerp(a[1] - s * 2.4, b[1] - s * 2.2, k) - Math.sin(k * Math.PI) * s * 3;
@@ -369,6 +364,7 @@ const GUI = (() => {
         if (now - (p.bump || 0) < 250) D.txt(c, '💥', x, y - s * 2, s * 1.4, { f: 'Plex' });
       }
       if (!g.go) D.sticker(c, 'استعدّوا…', w / 2, h / 2, 30, css().acc2, '#1E1B18', -0.04);
+      else if (g.nextShrink) { const left = Math.max(0, (g.nextShrink - now) / 1000); D.sticker(c, left <= 3 ? 'الحلبة عم تصغر!' : `الحلبة بتصغر بعد ${Math.ceil(left)}`, w / 2, 22, 14, left <= 3 ? css().bad : css().paper, left <= 3 ? '#fff' : css().ink, 0); }
     },
   };
 
@@ -573,7 +569,8 @@ const GUI = (() => {
       ids.forEach((id, i) => {
         const x = w / 2 + (i - (n - 1) / 2) * s * 2.5;
         const dead = !g.alive.includes(id);
-        D.char(c, x, dead ? y + s : y, s, P(id), { pose: dead ? 'fall' : 'dance', k: cur.mv === 'D' ? (i % 2 ? ph : -ph) : k, lean: k * 0.15, me: isMe(id), label: n <= 8 || isMe(id), seed: i, alpha: dead ? 0.5 : 1 });
+        const ch = D.char(c, x, dead ? y + s : y, s, P(id), { pose: dead ? 'fall' : 'dance', k: cur.mv === 'D' ? (i % 2 ? ph : -ph) : k, lean: k * 0.15, me: isMe(id), label: n <= 8 || isMe(id), seed: i, alpha: dead ? 0.5 : 1 });
+        if (!dead && g.errs) { D.hearts(c, x, ch.top[1] - s * 0.5, 3 - (g.errs[id] || 0), 3, Math.max(6, s * 0.42)); if (g.lastErr && now - (g.lastErr[id] || 0) < 700) D.sticker(c, 'غلط!', x, ch.top[1] - s * 1.4, Math.max(9, s * 0.5), css().bad, '#fff', 0); }
       });
       if (g.t0 > now) D.sticker(c, String(Math.ceil((g.t0 - now) / 1000)), w / 2, h * 0.12, 30, css().acc2, '#1E1B18', 0);
       else D.sticker(c, 'اللويّح: الموبايل 🥁', w / 2, h * 0.08 + 12, 15, css().paper, css().ink, -0.02);
