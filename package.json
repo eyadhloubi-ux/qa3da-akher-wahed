@@ -1,0 +1,21 @@
+{
+  "name": "qa3da-akher-wahed",
+  "version": "1.0.0",
+  "description": "قعدة آخر واحد — 12 لعبة إقصاء للقعدة. إعداد م. إياد حلوبي",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "express": "^4.22.3",
+    "qrcode": "^1.5.4",
+    "ws": "^8.23.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "private": true,
+  "keywords": [],
+  "author": ""
+}

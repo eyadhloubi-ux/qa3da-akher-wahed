@@ -1,0 +1,9 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>إدارة — قعدة آخر واحد</title><link rel="stylesheet" href="/style.css"></head>
+<body><div class="screen on" style="display:flex"><div class="card"><h2>إدارة قعدة آخر واحد</h2><div id="st" class="rank-list"></div></div><div class="card"><h3>القعدات الشغّالة</h3><div id="rm" class="rank-list"></div></div><p class="muted sm center">بتتحدّث كل 5 ثواني · إعداد م. إياد حلوبي</p></div>
+<script>
+const key=new URLSearchParams(location.search).get('key');const N={tug:'شدّ الحبل',island:'الجزيرة',rps:'حجرة ورقة مقص',push:'الدفش',bomb:'القنبلة',auction:'المزاد الأخير',cowboy:'الكاوبوي',pillow:'معركة المخدّات',tag:'تخليص',blow:'النفخ',slipper:'حرب الشحاطات',dabke:'الدبكة'};
+async function load(){const d=await (await fetch('/admin/data?key='+encodeURIComponent(key))).json();const s=d.stats;const top=Object.entries(s.gamesPlayed||{}).sort((a,b)=>b[1]-a[1]);
+document.getElementById('st').innerHTML=`<div class="rk"><span class="nm">قعدات انفتحت</span><span class="pt">${s.sessions}</span></div><div class="rk"><span class="nm">لاعبين فاتوا</span><span class="pt">${s.players}</span></div><div class="rk"><span class="nm">قعدات خلصت لحفلة الكشف</span><span class="pt">${s.finished}</span></div><div class="rk"><span class="nm">أكتر لعبة انلعبت<small>${top.map(([g,n])=>(N[g]||g)+' '+n).join(' · ')||'—'}</small></span><span class="pt">${top[0]?N[top[0][0]]:'—'}</span></div><p class="muted sm">من ${new Date(s.since).toLocaleDateString('ar')}</p>`;
+document.getElementById('rm').innerHTML=d.rooms.map(r=>`<div class="rk"><span class="ps">${r.code}</span><span class="nm">${r.name}<small>${r.phase}${r.game?' · '+(N[r.game]||r.game):''}</small></span><span class="pt">${r.online}/${r.players}</span></div>`).join('')||'<p class="muted">ما في قعدات هلّق</p>';}
+load();setInterval(load,5000);
+</script></body></html>

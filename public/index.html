@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>قعدة آخر واحد</title>
+<meta name="description" content="12 لعبة إقصاء للقعدة — كل واحد من موبايله، وآخر واحد بيضل هو الفايز. إعداد م. إياد حلوبي">
+<meta name="theme-color" content="#F4E9D4">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <header id="top" class="hide">
+    <div class="brand"><span class="brand-q">قعدة</span><span class="brand-n">آخر واحد</span></div>
+    <div class="top-info" id="topInfo"></div>
+    <div class="top-btns">
+      <button class="ib" id="btnTheme" title="فاتح/داكن">🌙</button>
+      <button class="ib" id="btnHelp" title="كيف منلعب؟">؟</button>
+      <button class="ib" id="btnHome" title="القعدة">⌂</button>
+    </div>
+  </header>
+  <div id="net" class="hide">عم نرجّعك عالقعدة…</div>
+
+  <!-- الغلاف -->
+  <section class="screen" id="s-cover">
+    <canvas id="coverCv"></canvas>
+    <div class="cover-in">
+      <div class="logo-big">
+        <div class="lb-patch">قعدة</div>
+        <div class="lb-sticker">آخر واحد</div>
+      </div>
+      <p class="cover-sub">مين بيضل للآخر؟</p>
+      <div class="ticker"><div class="ticker-in" id="ticker"></div></div>
+      <div class="cover-btns">
+        <button class="btn big pri" id="goCreate">افتح قعدة</button>
+        <button class="btn big" id="goJoin">فوت عقعدة</button>
+      </div>
+      <div class="sig">إعداد م. إياد حلوبي</div>
+    </div>
+  </section>
+
+  <!-- كود الدخول -->
+  <section class="screen" id="s-code">
+    <div class="card narrow">
+      <h2>شو كود القعدة؟</h2>
+      <input id="codeIn" class="inp code" maxlength="5" placeholder="ABCDE" autocomplete="off" autocapitalize="characters">
+      <button class="btn pri wide" id="codeGo">فوت</button>
+      <button class="btn ghost wide" data-back>رجوع</button>
+    </div>
+  </section>
+
+  <!-- البروفايل (إنشاء/دخول) -->
+  <section class="screen" id="s-profile">
+    <div class="card">
+      <h2 id="profTitle">عرّفنا عليك</h2>
+      <div class="prof-row">
+        <div class="avatar-pick" id="avPick"><img id="avImg" alt=""><span id="avPh">صورتك</span></div>
+        <div class="prof-fields">
+          <input id="nameIn" class="inp" maxlength="24" placeholder="اسمك (اختياري)" autocomplete="off">
+          <div class="seg" id="genderSeg"><button data-g="m">شب</button><button data-g="f">صبية</button></div>
+        </div>
+      </div>
+      <div class="photo-btns"><button class="btn sm" id="pickGallery">من الصور</button><button class="btn sm" id="pickSelfie">سيلفي</button><button class="btn sm ghost" id="pickClear">بلا صورة</button></div>
+      <div id="sessFields" class="hide">
+        <div class="sep"></div>
+        <h3>القعدة</h3>
+        <input id="sessName" class="inp" maxlength="30" placeholder="اسم القعدة (مثلاً: شلة الجمعة)">
+        <div class="chips" id="sessType"><button data-t="شلة">شلة</button><button data-t="رفقة">رفقة</button><button data-t="عيلة">عيلة</button><button data-t="custom">غير…</button></div>
+        <input id="sessTypeCustom" class="inp hide" maxlength="20" placeholder="اكتب نوع القعدة">
+      </div>
+      <p class="err" id="profErr"></p>
+      <button class="btn pri wide" id="profGo">يلا</button>
+      <button class="btn ghost wide" data-back>رجوع</button>
+    </div>
+  </section>
+
+  <!-- الانتظار -->
+  <section class="screen" id="s-lobby">
+    <div class="lobby">
+      <div class="card join-card">
+        <div class="qr" id="qr"></div>
+        <div class="join-info">
+          <div class="muted sm">كود القعدة</div>
+          <div class="big-code" id="lobbyCode">-----</div>
+          <div class="row"><button class="btn sm" id="copyLink">انسخ الرابط</button><button class="btn sm" id="shareLink">شارك</button></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="row between"><h3 id="lobbyName">القعدة</h3><span class="pill" id="lobbyCount">0</span></div>
+        <div class="group-ph" id="groupPh"><img id="groupImg" alt=""><span>صورة الشلة</span></div>
+        <div class="players" id="lobbyPlayers"></div>
+      </div>
+      <div class="card" id="hostBox">
+        <h3>إعدادات الريس</h3>
+        <label class="lbl">كم لعبة منلعب؟</label>
+        <div class="stepper"><button id="cntMinus">−</button><b id="cntVal">6</b><button id="cntPlus">+</button></div>
+        <div class="row wrap"><button class="btn sm" id="editSess">اسم القعدة ونوعها</button><button class="btn sm" id="gpGallery">صورة الشلة</button><button class="btn sm" id="gpSelfie">صورة سيلفي للشلة</button></div>
+        <button class="btn big pri wide" id="startBtn">لفّ الدولاب!</button>
+        <p class="muted sm center" id="startHint">لازم يكون في لاعبين عالأقل</p>
+      </div>
+      <div class="card hide" id="guestWait"><p class="center">استنى الريس يلفّ الدولاب… 🎡</p><button class="btn sm wide" id="editMe">عدّل اسمي وصورتي</button></div>
+    </div>
+  </section>
+
+  <!-- الدولاب -->
+  <section class="screen" id="s-wheel">
+    <div class="wheel-wrap">
+      <div class="wheel-title" id="wheelTitle">اللعبة 1</div>
+      <div class="wheel-box"><div class="pointer"></div><svg id="wheelSvg" viewBox="-110 -110 220 220"></svg><div class="hub">🎡</div></div>
+      <div class="wheel-result" id="wheelRes"></div>
+    </div>
+  </section>
+
+  <!-- تقديم اللعبة -->
+  <section class="screen" id="s-intro">
+    <div class="card intro">
+      <div class="intro-n" id="introN"></div>
+      <div class="intro-ico" id="introIco"></div>
+      <h2 id="introName"></h2>
+      <p class="intro-how" id="introHow"></p>
+      <div id="introExtra"></div>
+      <button class="btn big pri wide" id="readyBtn">جاهز!</button>
+      <div class="ready-list" id="readyList"></div>
+      <div class="row wrap center host-only"><button class="btn sm" id="beginBtn">بلّش هلّق</button><button class="btn sm ghost" id="skipBtn">مرّر هاللعبة</button></div>
+    </div>
+  </section>
+
+  <!-- اللعب -->
+  <section class="screen" id="s-play">
+    <div class="stairs" id="stairs"></div>
+    <div class="play-msg" id="playMsg"></div>
+    <div class="stage"><canvas id="cv"></canvas><div class="count-ov hide" id="countOv"></div><div class="out-ov hide" id="outOv"></div></div>
+    <div class="controls" id="controls"></div>
+  </section>
+
+  <!-- نتيجة اللعبة -->
+  <section class="screen" id="s-over">
+    <div class="card">
+      <h2 id="overTitle">خلصت اللعبة</h2>
+      <div class="rank-list" id="overList"></div>
+      <div class="row wrap center host-only"><button class="btn pri" id="nextBtn">الدولاب للعبة الجاية</button><button class="btn sm" id="replayBtn">أعد اللعبة (النتيجة بتنلغى)</button></div>
+      <p class="muted sm center" id="overHint"></p>
+    </div>
+  </section>
+
+  <!-- حفلة الكشف -->
+  <section class="screen" id="s-reveal">
+    <canvas id="fxCv"></canvas>
+    <div class="reveal">
+      <h2 class="rv-h">حفلة الكشف</h2>
+      <div class="rv-stage" id="rvStage"></div>
+      <div class="rv-list" id="rvList"></div>
+      <button class="btn sm ghost host-only" id="skipReveal">اكشف الكل</button>
+    </div>
+  </section>
+
+  <!-- النتيجة النهائية -->
+  <section class="screen" id="s-final">
+    <div class="final">
+      <div class="card">
+        <h2>الترتيب النهائي</h2>
+        <div class="rank-list" id="finalList"></div>
+        <details class="games-det"><summary>كل الألعاب بالتفصيل</summary><div id="finalGames"></div></details>
+      </div>
+      <div class="card">
+        <h3>صورة الستوري</h3>
+        <div class="seg" id="storyLayout"><button data-l="sign">لافتة</button><button data-l="polaroid">بولاريد</button><button data-l="card">كرت</button></div>
+        <div class="seg sm" id="storyTheme"><button data-m="light">فاتح</button><button data-m="dark">داكن</button></div>
+        <div class="story-prev"><canvas id="storyCv" width="1080" height="1920"></canvas></div>
+        <div class="row wrap center"><button class="btn pri" id="dlStory">نزّل الصورة</button><button class="btn" id="shareFriends">شارك مع صحابك</button></div>
+        <div class="install hide" id="installBox"><p>نزّل «قعدة آخر واحد» كتطبيق عموبايلك</p><button class="btn sm" id="installBtn">نزّل التطبيق</button></div>
+      </div>
+      <div class="card host-only">
+        <h3>للريس</h3>
+        <div class="row wrap"><button class="btn sm" id="fEditSess">عدّل اسم القعدة ونوعها</button><button class="btn sm" id="fGroupPh">صورة الشلة</button></div>
+        <div class="row wrap"><button class="btn pri" id="fSame">قعدة جديدة بنفس الناس</button><button class="btn" id="fNew">قعدة جديدة بناس جدد</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- طرد -->
+  <section class="screen" id="s-kicked">
+    <div class="card narrow center"><h2 id="kickedT">طلعت من القعدة</h2><p id="kickedP">الريس طلّعك من القعدة.</p><button class="btn pri wide" id="rejoin">فوت من جديد</button><button class="btn ghost wide" id="toCover">الصفحة الأولى</button></div>
+  </section>
+</div>
+
+<!-- نوافذ -->
+<div class="modal hide" id="mHelp"><div class="sheet"><button class="x" data-close>✕</button><div id="helpBody"></div></div></div>
+<div class="modal hide" id="mHome"><div class="sheet"><button class="x" data-close>✕</button><h3>القعدة</h3><div id="homeBody"></div></div></div>
+<div class="modal hide" id="mCrop"><div class="sheet crop-sheet"><h3 id="cropT">قصّ الصورة</h3><div class="crop-box" id="cropBox"><canvas id="cropCv"></canvas></div><input type="range" id="cropZoom" min="1" max="4" step="0.01" value="1"><div class="row wrap center"><button class="btn sm" id="cropRot">⟳ لفّ</button><button class="btn sm" id="cropOri">طول/عرض</button></div><div class="row center"><button class="btn pri" id="cropOk">تمام</button><button class="btn ghost" data-close>إلغاء</button></div></div></div>
+<div class="modal hide" id="mCam"><div class="sheet"><video id="camV" playsinline autoplay muted></video><div class="row center"><button class="btn pri" id="camShot">صوّر</button><button class="btn sm" id="camFlip">⇄</button><button class="btn ghost" data-close>إلغاء</button></div></div></div>
+<div class="modal hide" id="mSess"><div class="sheet"><button class="x" data-close>✕</button><h3>اسم القعدة ونوعها</h3><input id="mSessName" class="inp" maxlength="30"><div class="chips" id="mSessType"><button data-t="شلة">شلة</button><button data-t="رفقة">رفقة</button><button data-t="عيلة">عيلة</button><button data-t="custom">غير…</button></div><input id="mSessTypeC" class="inp hide" maxlength="20" placeholder="اكتب نوع القعدة"><button class="btn pri wide" id="mSessOk">احفظ</button></div></div>
+<div class="modal hide" id="mConfirm"><div class="sheet narrow center"><p id="confTxt"></p><div class="row center"><button class="btn pri" id="confYes">إي</button><button class="btn ghost" data-close>لأ</button></div></div></div>
+<input type="file" id="fileIn" accept="image/*" class="hide">
+<div id="toast"></div>
+
+<script src="vendor/qrcode.js"></script>
+<script src="sound.js"></script>
+<script src="draw.js"></script>
+<script src="games-ui.js"></script>
+<script src="story.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
