@@ -502,42 +502,67 @@ const GUI = (() => {
     },
   };
 
-  // 11) الكاوبوي
-  const cowboy = {
-    controls(el, g) {
+  // 11) الهوكي
+  const HH = 1.6;
+  const hockey = {
+    controls(el) {
       el.innerHTML = '';
-      this.b = btn(el, 'اسحب! 🤠', 'بس بعد الإشارة', '', { down: () => { A.send({ a: 'draw' }); SFX.bang(); vib(20); } });
-      this.picks = document.createElement('div'); this.picks.className = 'picks hide'; el.appendChild(this.picks);
-      this.pickKey = '';
+      const pad = document.createElement('div'); pad.className = 'hpad'; pad.innerHTML = '<i></i><span>حرّك إصبعك هون… هي نصّك من الطاولة</span>';
+      el.appendChild(pad); this.pad = pad; const dot = pad.querySelector('i');
+      let act = false, last = 0;
+      const setFrom = (e) => {
+        const r = pad.getBoundingClientRect();
+        const x = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)), y = Math.max(0, Math.min(1, (e.clientY - r.top) / r.height));
+        dot.style.left = x * 100 + '%'; dot.style.top = y * 100 + '%';
+        const t = performance.now(); if (t - last < 30) return; last = t;
+        A.send({ a: 'pad', x: Math.round(x * 1000) / 1000, y: Math.round(y * 1000) / 1000 });
+      };
+      pad.addEventListener('pointerdown', (e) => { e.preventDefault(); act = true; try { pad.setPointerCapture(e.pointerId); } catch (x) {} SFX.unlock(); setFrom(e); });
+      pad.addEventListener('pointermove', (e) => { if (act) setFrom(e); });
+      pad.addEventListener('pointerup', () => (act = false)); pad.addEventListener('pointercancel', () => (act = false));
+      this.lastGoal = 0;
     },
     update(g) {
-      if (!this.b) return;
-      const picking = g.phase === 'pick' && g.picker === A.me;
-      this.b.classList.toggle('hide', picking); this.picks.classList.toggle('hide', !picking);
-      const key = picking ? g.round + ':' + g.alive.join(',') : '';
-      if (picking && key !== this.pickKey) {
-        this.pickKey = key; this.picks.innerHTML = '<div style="width:100%;text-align:center;font-weight:700">إنت الأسرع! مين بدك تطلّع؟</div>';
-        g.alive.filter((id) => id !== A.me).forEach((id) => { const pl = P(id); const b = document.createElement('button'); const im = D.photo(id); b.innerHTML = `<i style="background-color:${pl.color};${im ? `background-image:url(${im.src})` : ''}">${im ? '' : D.initials(pl.name)}</i>${pl.name}`; b.onclick = () => { A.send({ a: 'pick', v: id }); SFX.bang(); }; this.picks.appendChild(b); });
-      }
+      const m = g.matches && g.matches.find((x) => x.ps.includes(A.me)); if (!m || !this.pad) return;
+      const waiting = m.wait && m.wait.includes(A.me);
+      this.pad.classList.toggle('off', !!waiting || !m.active.includes(A.me));
+      this.pad.querySelector('span').textContent = waiting ? 'إنت عم تستنى… بتلعب مع الربحان' : 'حرّك إصبعك هون… هي نصّك من الطاولة';
+      if (m.goal && m.goal.at !== this.lastGoal) { this.lastGoal = m.goal.at; SFX.whistle(); }
     },
     draw(c, w, h, g) {
-      D.hara(c, w, h, { wall: true }); const now = A.sNow();
-      const ids = g.alive.concat(g.shot && !g.alive.includes(g.shot) ? [g.shot] : []);
-      const n = ids.length, cols = Math.min(n, w > 520 ? 8 : 5), rows = Math.ceil(n / cols);
-      const cw = w / cols, chh = (h * 0.72) / rows;
-      const s = Math.max(8, Math.min(cw / 4.5, chh / 5.5, 26));
-      ids.forEach((id, i) => {
-        const x = cw * (i % cols) + cw / 2, y = h * 0.28 + chh * Math.floor(i / cols) + chh * 0.8;
-        const shot = g.phase === 'shot' && g.shot === id;
-        const pk = g.picker === id;
-        D.char(c, x, y, s, P(id), { pose: shot ? 'fall' : pk ? 'shoot' : g.phase === 'draw' ? 'hold' : 'idle', me: isMe(id), label: true, seed: i, flip: 1 });
-        if (pk) D.txt(c, '⭐', x, y - s * 4.6, s, { f: 'Plex' });
-      });
-      if (g.phase === 'draw') { D.sticker(c, 'اسحب!', w / 2, h * 0.14, Math.min(64, h * 0.12), css().bad, '#fff', -0.06); }
-      else if (g.phase === 'wait') D.sticker(c, 'استعدّوا…', w / 2, h * 0.14, 28, css().acc2, '#1E1B18', 0.03);
-      else if (g.phase === 'pick') D.sticker(c, (P(g.picker).name || '') + ' عم يختار…', w / 2, h * 0.14, 22, css().acc3, '#fff', 0);
-      else if (g.phase === 'shot') D.sticker(c, 'بانغ! 💥', w / 2, h * 0.14, 36, css().bad, '#fff', -0.04);
-      else if (g.phase === 'early') D.sticker(c, 'استعجل… وطلع!', w / 2, h * 0.14, 24, css().bad, '#fff', 0.04);
+      D.hara(c, w, h, {}); const now = A.sNow();
+      for (const r of layout(g.matches, w, h)) {
+        panel(c, r); const m = r.m; if (!m.pk) continue;
+        const pad = r.big ? 14 : 8, top = r.y + (r.big ? 40 : 22);
+        const avH = r.h - (top - r.y) - pad, avW = r.w - pad * 2;
+        const TW = Math.min(avW, avH / HH), TH = TW * HH, tx = r.x + (r.w - TW) / 2, ty = top + (avH - TH) / 2;
+        const flip = m.pair[1] === A.me;                    // كل واحد بيشوف مرماه تحت
+        const T = (x, y) => flip ? [tx + (1 - x) * TW, ty + (HH - y) / HH * TH] : [tx + x * TW, ty + y / HH * TH];
+        // الطاولة
+        c.fillStyle = css().dark ? '#24435a' : '#DDF0F7'; c.strokeStyle = css().line; c.lineWidth = r.big ? 4 : 2.5;
+        D.rr(c, tx, ty, TW, TH, TW * 0.08); c.fill(); c.stroke();
+        c.strokeStyle = css().acc; c.lineWidth = 2; c.beginPath(); c.moveTo(tx, ty + TH / 2); c.lineTo(tx + TW, ty + TH / 2); c.stroke();
+        c.beginPath(); c.arc(tx + TW / 2, ty + TH / 2, TW * 0.15, 0, 7); c.stroke();
+        const gw = 0.38 * TW; c.fillStyle = css().ink;
+        c.fillRect(tx + (TW - gw) / 2, ty - 4, gw, 7); c.fillRect(tx + (TW - gw) / 2, ty + TH - 3, gw, 7);
+        // المضارب = راس كل لاعب
+        const sides = flip ? [m.pair[1], m.pair[0]] : [m.pair[0], m.pair[1]];
+        for (const p of m.pair) {
+          const q = m.pd[p]; if (!q) continue;
+          const sp = smooth('hk' + p, q[0], q[1], 0.6); const [x, y] = T(sp[0], sp[1]);
+          D.head(c, x, y, 0.075 * TW, P(p), { me: isMe(p) });
+        }
+        const kp = smooth('hkp' + m.id + m.pair.join(''), m.pk[0], m.pk[1], 0.75); const [px, py] = T(kp[0], kp[1]);
+        c.fillStyle = '#1E1B18'; c.beginPath(); c.arc(px, py, 0.042 * TW, 0, 7); c.fill(); c.strokeStyle = css().acc2; c.lineWidth = 2; c.stroke();
+        // النتيجة
+        const fs = r.big ? 15 : 10;
+        sides.forEach((p, k) => { if (!p) return; D.sticker(c, `${P(p).name.slice(0, 8)} ${m.sc[p] || 0}`, tx + TW / 2, k ? ty + 2 : ty + TH - 2, fs, P(p).color, '#fff', 0); });
+        if (m.wait && m.wait.length) D.txt(c, '⏳ ' + P(m.wait[0]).name.slice(0, 8) + ' بيستنى', r.x + r.w / 2, r.y + (r.big ? 22 : 12), r.big ? 13 : 9, { f: 'Plex', w: 700 });
+        if (m.goal && now - m.goal.at < 1300) D.sticker(c, 'جووول!', tx + TW / 2, ty + TH / 2, r.big ? 30 : 16, css().acc, '#fff', -0.08);
+        else if (m.sudden && !m.done) D.sticker(c, 'الجول الجاي بيربح', tx + TW / 2, ty + TH / 2, r.big ? 15 : 9, css().bad, '#fff', 0);
+        matchTimer(c, r, m, g); doneMark(c, r, m);
+      }
+      bracketHeader(c, w, g);
     },
   };
 
@@ -606,8 +631,8 @@ const GUI = (() => {
     },
   };
 
-  const UI = { tug, rps, pillow, blow, slipper, island, push, tag, bomb: bombUI, highlow, cowboy, dabke };
-  const BRACKET = ['tug', 'rps', 'blow', 'slipper'];
+  const UI = { tug, rps, pillow, blow, slipper, island, push, tag, bomb: bombUI, highlow, hockey, dabke };
+  const BRACKET = ['tug', 'rps', 'blow', 'slipper', 'hockey'];
   return { UI, BRACKET, init(api) { A = api; }, reset() { for (const k in sm) delete sm[k]; } };
 })();
 

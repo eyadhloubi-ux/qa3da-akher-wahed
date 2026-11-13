@@ -114,7 +114,12 @@ class Bracket extends ElimGame {
     if (this.phase === 'roundEnd' && t >= this.phaseEnd) {
       const losers = this.roundLosers.filter((p) => this.alive.has(p));
       // ضمان: ما بيطلعوا الكل
-      if (losers.length && losers.length < this.alive.size) this.eliminate(losers, 'خسر/ت المواجهة');
+      if (losers.length && losers.length < this.alive.size) {
+        // بالتلاتية: اللي طلع أول (قبل ما يكمّل التاني) مركزه أوطى
+        const early = this.matches.filter((m) => m.ps.length === 3 && m.losers.length === 2).map((m) => m.losers[0]).filter((p) => losers.includes(p));
+        if (early.length && early.length < losers.length) this.eliminate(early, 'خسر/ت المواجهة');
+        this.eliminate(losers.filter((p) => !early.includes(p) || early.length >= losers.length), 'خسر/ت المواجهة');
+      }
       else if (losers.length >= this.alive.size) { /* حالة نادرة: منعيد الجولة */ }
       if (!this.done) this.newRound();
     }
@@ -254,7 +259,7 @@ class Blow extends Bracket {
 class Slipper extends Bracket {
   // زر التخبّي: طول ما إصبعك عليه إنت متخبّي. بس تشيل إصبعك بتشلّف شحاطة كل ثانية.
   // كل واحد معه 10 شحاطات. لما يخلصوا، اللي صاب أكتر بيربح.
-  initMatch(m) { m.st = {}; m.ps.forEach((p) => (m.st[p] = { hide: false, left: 10, dealt: 0, taken: 0, next: 0, tg: 0, hitAt: 0 })); m.fly = []; m.max = 45; m.sudden = false; }
+  initMatch(m) { m.st = {}; m.ps.forEach((p) => (m.st[p] = { hide: false, left: 10, dealt: 0, taken: 0, next: 0, tg: 0, hitAt: 0, firstHit: Infinity })); m.fly = []; m.max = 40; m.sudden = false; }
   onFightStart(m) { const t = now(); m.ps.forEach((p, i) => (m.st[p].next = t + 600 + i * 250)); }
   matchInput(m, pid, msg) {
     const s = m.st[pid];
@@ -276,20 +281,26 @@ class Slipper extends Bracket {
       const o = m.st[f.to];
       if (!o || !m.active.includes(f.to)) { f.res = 'miss'; continue; }
       if (o.hide) f.res = 'block';
-      else { f.res = 'hit'; o.taken++; o.hitAt = t; m.st[f.from].dealt++; }
+      else { f.res = 'hit'; o.taken++; o.hitAt = t; const a = m.st[f.from]; a.dealt++; if (a.firstHit === Infinity) a.firstHit = t; }
     }
     m.fly = m.fly.filter((f) => !f.res || t - f.land < 900);
     const allOut = m.active.every((p) => m.st[p].left <= 0) && m.fly.every((f) => f.res);
     if (allOut || m.t >= m.max) this.decide(m);
   }
   decide(m) {
+    // إذا خلص الوقت: اللي ضلّ متخبّي ومعه شحاطات ما رماها بيطلع برّا (وإذا الاتنين… الاتنين)
+    if (m.t >= m.max) {
+      const hoard = m.active.filter((p) => m.st[p].left > 0);
+      if (hoard.length >= m.active.length) return this.endMatch(m, null);
+      hoard.forEach((p) => this.knock(m, p)); if (m.done) return;
+    }
     const sc = (p) => m.st[p].dealt;
     const top = Math.max(...m.active.map(sc));
+    if (top === 0) return this.endMatch(m, null);               // ولا حدا صاب حدا: الكل برّا
     const best = m.active.filter((p) => sc(p) === top);
-    if (best.length === 1) return this.endMatch(m, best[0]);
-    // تعادل: الباقيين بياخدوا 3 شحاطات كمان (مرة وحدة)، وبعدها قرعة
-    if (!m.sudden) { m.sudden = true; m.max = m.t + 15; m.active.slice().forEach((p) => { if (sc(p) < top) this.knock(m, p); }); m.active.forEach((p) => { m.st[p].left = 3; m.st[p].next = now() + 800; }); return; }
-    this.endMatch(m, best[rint(0, best.length - 1)]);
+    // تعادل بالإصابات: أول واحد صاب التاني بيربح
+    best.sort((a, b) => m.st[a].firstHit - m.st[b].firstHit);
+    this.endMatch(m, best[0]);
   }
   matchView(m) { const o = {}; for (const p of m.ps) { const s = m.st[p]; o[p] = { hide: s.hide, left: s.left, dealt: s.dealt, taken: s.taken, next: s.next, hitAt: s.hitAt }; } return { st: o, fly: m.fly.map((f) => ({ from: f.from, to: f.to, at: f.at, land: f.land, res: f.res || null })), max: m.max, sudden: m.sudden }; }
 }
@@ -326,14 +337,26 @@ class Island extends Arena {
   constructor(ctx) { super(ctx); this.speed = 0.36; this.phase = 'roam'; this.phaseEnd = 0; this.isl = []; this.seat = {}; this.fails = 0; this.roundN = 0; }
   start() { this.toRoam(); }
   toRoam() { this.phase = 'roam'; this.phaseEnd = now() + rint(2200, 3600); this.isl = []; this.seat = {}; this.msg = 'لفّوا بالساحة… الجزر جاية'; }
-  sizes(C) { const out = []; while (C > 0) { let s; if (C <= 4) s = C; else if (C === 5) s = 3; else s = Math.random() < 0.5 ? 3 : 4; if (C - s === 1 && s === 4) s = 3; out.push(s); C -= s; } return out; }
+  sizes(C) {
+    const out = [];
+    const style = Math.random();
+    while (C > 0) {
+      let s;
+      if (style < 0.35) s = Math.min(C, rint(4, 6));          // جزر كبيرة
+      else if (style < 0.7) s = Math.min(C, rint(2, 3));      // جزر صغيرة كتير
+      else s = Math.min(C, rint(1, 6));                        // خلطة
+      out.push(s); C -= s;
+    }
+    return shuffle(out).slice(0, 7).concat(out.length > 7 ? [out.slice(7).reduce((a, b) => a + b, 0)] : []);
+  }
   spawn() {
     const n = this.alive.size;
-    const k = Math.max(1, Math.round(n / 4));            // كم واحد بيطلع هالجولة
+    // عدد الجزر وحجمها عشوائي كل مرة (مرة جزيرتين 6 و6، مرة جزر صغيرة كتير…) — بس دايماً في حدا بيضل برّا
+    const k = n <= 3 ? 1 : rint(1, Math.max(1, Math.floor(n * 0.45)));
     const caps = this.sizes(n - k);
     const isl = [];
     for (const cap of caps) {
-      const r = 0.055 + cap * 0.014;
+      const r = 0.05 + Math.min(cap, 6) * 0.013;
       let best = null, bd = -1;
       for (let tries = 0; tries < 60; tries++) {
         const c = [rnd(0.14, 0.86), rnd(0.18, 0.86)];
@@ -668,39 +691,90 @@ class HighLow extends ElimGame {
   view() { return Object.assign(this.baseView(), { kind: 'highlow', t0: this.t0, calls: this.calls, pend: this.pend ? this.pend.i : -1, state: this.state, last: this.last }); }
 }
 
-// 11) الكاوبوي
-class Cowboy extends ElimGame {
-  constructor(ctx) { super(ctx); this.phase = 'wait'; this.picker = null; this.round = 0; }
-  get realtime() { return true; }
-  start() { this.toWait(); }
-  toWait() { this.round++; this.phase = 'wait'; this.drawAt = now() + rint(2200, 6500); this.picker = null; this.msg = 'استعدّوا… لا حدا يسحب قبل الإشارة'; this.early = []; }
-  input(pid, msg) {
-    if (!this.alive.has(pid)) return;
+// 11) الهوكي — كل اتنين ضد بعض، أول واحد بيسجّل جولين بيربح. بالتلاتية واحد بيستنى ويلعب مع الربحان.
+const HW = 1, HH = 1.6, PR = 0.075, KR = 0.042, GW = 0.38;
+class Hockey extends Bracket {
+  initMatch(m) {
+    m.wait = m.ps.slice(2); m.pair = m.ps.slice(0, 2); m.sc = {}; m.ps.forEach((p) => (m.sc[p] = 0));
+    m.pd = {}; m.max = 60; this.resetPair(m, 0);
+  }
+  resetPair(m, toward) {
+    const [a, b] = m.pair;
+    m.pd = {};
+    if (a) m.pd[a] = { x: 0.5, y: HH - 0.22, tx: 0.5, ty: HH - 0.22, vx: 0, vy: 0 };   // a تحت
+    if (b) m.pd[b] = { x: 0.5, y: 0.22, tx: 0.5, ty: 0.22, vx: 0, vy: 0 };            // b فوق
+    const dir = toward || (Math.random() < 0.5 ? -1 : 1); m.pk = { x: 0.5, y: HH / 2, vx: rnd(-0.25, 0.25), vy: dir * 0.35 };   // الطابة بتمشي شوي لعند اللي انسجل عليه
+    m.freeze = now() + 1200; m.goal = null;
+  }
+  onShrink(m) {           // بالتلاتية: الربحان بيلعب مع اللي كان عم يستنى
+    m.pair = m.active.slice(0, 2); m.wait = []; m.pair.forEach((p) => (m.sc[p] = 0)); m.t = 0; m.press = {}; m.sudden = false; this.resetPair(m, 0);
+  }
+  matchInput(m, pid, msg) {
+    if (msg.a !== 'pad' || !m.pair.includes(pid)) return;
+    const d = m.pd[pid]; if (!d) return;
+    const x = clamp(+msg.x || 0, 0, 1), y = clamp(+msg.y || 0, 0, 1);    // y: 0 = خط النص، 1 = عند مرماك
+    if (pid === m.pair[0]) { d.tx = PR + x * (HW - 2 * PR); d.ty = HH / 2 + PR + y * (HH / 2 - 2 * PR); }
+    else { d.tx = HW - (PR + x * (HW - 2 * PR)); d.ty = HH / 2 - PR - y * (HH / 2 - 2 * PR); }
+  }
+  tickMatch(m, dt) {
     const t = now();
-    if (msg.a === 'draw') {
-      if (this.phase === 'wait') { this.early.push(pid); this.eliminate([pid], 'سحب قبل الإشارة'); if (!this.done) { this.phase = 'early'; this.phaseEnd = t + 2200; this.msg = 'استعجل… وطلع هو!'; } return; }
-      if (this.phase === 'draw' && !this.picker) {
-        this.picker = pid; this.reaction = t - this.drawAt; this.idle = 0;
-        if (this.alive.size === 2) { const other = [...this.alive].find((p) => p !== pid); this.phase = 'shot'; this.shot = other; this.phaseEnd = t + 2000; this.msg = 'الأسرع!'; }
-        else { this.phase = 'pick'; this.phaseEnd = t + 7000; this.msg = 'الأسرع عم يختار مين يطلّع…'; }
+    if (m.goal && t < m.freeze) return;
+    const steps = 4, h = dt / steps;
+    for (let k = 0; k < steps; k++) {
+      for (const p of m.pair) {
+        const d = m.pd[p]; if (!d) continue;
+        const dx = d.tx - d.x, dy = d.ty - d.y, dist = Math.hypot(dx, dy), mx = 2.6 * h;
+        const mvx = dist > mx ? (dx / dist) * mx : dx, mvy = dist > mx ? (dy / dist) * mx : dy;
+        d.vx = mvx / h; d.vy = mvy / h; d.x += mvx; d.y += mvy;
+      }
+      if (t < m.freeze) continue;
+      const k2 = m.pk;
+      k2.x += k2.vx * h; k2.y += k2.vy * h;
+      const fr = Math.exp(-0.35 * h); k2.vx *= fr; k2.vy *= fr;
+      if (k2.x < KR) { k2.x = KR; k2.vx = Math.abs(k2.vx) * 0.9; }
+      if (k2.x > HW - KR) { k2.x = HW - KR; k2.vx = -Math.abs(k2.vx) * 0.9; }
+      const inMouth = Math.abs(k2.x - 0.5) < GW / 2;
+      if (k2.y < KR && !inMouth) { k2.y = KR; k2.vy = Math.abs(k2.vy) * 0.9; }
+      if (k2.y > HH - KR && !inMouth) { k2.y = HH - KR; k2.vy = -Math.abs(k2.vy) * 0.9; }
+      for (const p of m.pair) {
+        const d = m.pd[p]; if (!d) continue;
+        const dx = k2.x - d.x, dy = k2.y - d.y, dist = Math.hypot(dx, dy), md = PR + KR;
+        if (dist < md && dist > 1e-6) {
+          const nx = dx / dist, ny = dy / dist;
+          k2.x = d.x + nx * md; k2.y = d.y + ny * md;
+          const rvx = k2.vx - d.vx, rvy = k2.vy - d.vy, vn = rvx * nx + rvy * ny;
+          if (vn < 0) { k2.vx -= 1.85 * vn * nx; k2.vy -= 1.85 * vn * ny; }
+          k2.vx += d.vx * 0.25; k2.vy += d.vy * 0.25;
+          const sp = Math.hypot(k2.vx, k2.vy); if (sp > 3.2) { k2.vx *= 3.2 / sp; k2.vy *= 3.2 / sp; }
+          m.hitAt = t;
+        }
+      }
+      // جول؟
+      if (k2.y < -KR || k2.y > HH + KR) {
+        const scorer = k2.y < 0 ? m.pair[0] : m.pair[1];     // الطابة فاتت مرمى اللي فوق ← سجّل اللي تحت
+        const loser = scorer === m.pair[0] ? m.pair[1] : m.pair[0];
+        m.sc[scorer]++; m.goal = { by: scorer, at: t };
+        if (m.sc[scorer] >= 2 || m.sudden) { this.knock(m, loser); return; }
+        this.resetPair(m, scorer === m.pair[0] ? -1 : 1); m.goal = { by: scorer, at: t };
+        return;
       }
     }
-    if (msg.a === 'pick' && this.phase === 'pick' && pid === this.picker && this.alive.has(msg.v) && msg.v !== pid) { this.shot = msg.v; this.phase = 'shot'; this.phaseEnd = t + 2000; this.msg = 'بانغ!'; }
-  }
-  tick() {
-    if (this.done) return;
-    const t = now();
-    if (this.phase === 'wait' && t >= this.drawAt) { this.phase = 'draw'; this.phaseEnd = t + 4500; this.msg = 'اسحب!'; }
-    else if (this.phase === 'draw' && t >= this.phaseEnd) {
-      this.idle = (this.idle || 0) + 1;
-      if (this.idle >= 3) { this.idle = 0; const al = [...this.alive]; this.shot = al[Math.floor(Math.random() * al.length)]; this.phase = 'shot'; this.phaseEnd = t + 2000; this.msg = 'ولا حدا سحب تالت مرة… قرعة!'; }
-      else { this.toWait(); this.msg = 'ولا حدا سحب… منعيد'; }
+    // مين ضاغط أكتر: الطابة بنص الخصم
+    if (m.pk && t >= m.freeze) { const k = m.pk.y < HH / 2 ? m.pair[0] : m.pair[1]; m.press = m.press || {}; m.press[k] = (m.press[k] || 0) + dt; }
+    if (m.t >= m.max && !m.sudden) {
+      const [a, b] = m.pair;
+      if (m.sc[a] !== m.sc[b]) this.knock(m, m.sc[a] > m.sc[b] ? b : a);
+      else { m.sudden = true; }                                  // تعادل: الجول الجاي بيربح
+    } else if (m.sudden && m.t >= m.max + 25) {                  // وإذا ما حدا سجّل: بيربح اللي ضغط أكتر بنص التاني
+      const [a, b] = m.pair, pr = m.press || {};
+      this.knock(m, (pr[a] || 0) >= (pr[b] || 0) ? b : a);
     }
-    else if (this.phase === 'pick' && t >= this.phaseEnd) { const c = [...this.alive].filter((p) => p !== this.picker); this.shot = c[rint(0, c.length - 1)]; this.phase = 'shot'; this.phaseEnd = t + 2000; this.msg = 'خلص الوقت… اختيار عشوائي'; }
-    else if (this.phase === 'shot' && t >= this.phaseEnd) { this.eliminate([this.shot], 'انضرب'); if (!this.done) this.toWait(); }
-    else if (this.phase === 'early' && t >= this.phaseEnd) this.toWait();
   }
-  view() { return Object.assign(this.baseView(), { kind: 'cowboy', phase: this.phase, drawAt: this.phase === 'wait' ? 0 : this.drawAt, phaseEnd: this.phaseEnd, picker: this.picker, shot: this.phase === 'shot' ? this.shot : null, round: this.round, reaction: this.reaction }); }
+  matchView(m) {
+    const r = (v) => Math.round(v * 1000) / 1000;
+    const pd = {}; for (const p in m.pd) pd[p] = [r(m.pd[p].x), r(m.pd[p].y)];
+    return { pair: m.pair, wait: m.wait, sc: m.sc, pd, pk: [r(m.pk.x), r(m.pk.y)], freeze: m.freeze, goal: m.goal, max: m.max, sudden: !!m.sudden, hitAt: m.hitAt || 0 };
+  }
 }
 
 // 12) الدبكة — اللويّح هو الموبايل
@@ -764,7 +838,7 @@ const GAMES = {
   push: { cls: Push, name: 'الدفش', icon: '💥' },
   bomb: { cls: Bomb, name: 'القنبلة', icon: '💣' },
   highlow: { cls: HighLow, name: 'عالي واطي', icon: '↕️' },
-  cowboy: { cls: Cowboy, name: 'الكاوبوي', icon: '🤠' },
+  hockey: { cls: Hockey, name: 'الهوكي', icon: '🏒' },
   pillow: { cls: Pillow, name: 'معركة المخدّات', icon: '🛋️' },
   tag: { cls: Tag, name: 'تخليص', icon: '🏃' },
   blow: { cls: Blow, name: 'النفخ', icon: '🌬️' },
