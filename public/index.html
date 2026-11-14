@@ -5,23 +5,23 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>قعدة آخر واحد</title>
 <meta name="description" content="12 لعبة إقصاء للقعدة — كل واحد من موبايله، وآخر واحد بيضل هو الفايز. إعداد م. إياد حلوبي">
-<meta name="theme-color" content="#F4E9D4">
+<meta name="theme-color" content="#3A63A8">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon-192.png">
-<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div id="app">
   <header id="top" class="hide">
-    <div class="brand"><span class="brand-q">قعدة</span><span class="brand-n">آخر واحد</span></div>
+    <div class="fam" id="famTag"><span class="fam-ch"></span><b>تحدّي ولعب</b></div>
     <div class="top-info" id="topInfo"></div>
     <div class="top-btns">
       <button class="ib" id="btnTheme" title="فاتح/داكن">🌙</button>
       <button class="ib" id="btnHelp" title="كيف منلعب؟">؟</button>
       <button class="ib" id="btnHome" title="القعدة">⌂</button>
-      <button class="ib host-only hide" id="btnPlayers" title="اللاعبين">👥</button>
+      <button class="ib" id="btnPlayers" title="اللاعبين">👥</button>
     </div>
   </header>
   <div id="net" class="hide">عم نرجّعك عالقعدة…</div>
@@ -30,10 +30,9 @@
   <section class="screen" id="s-cover">
     <canvas id="coverCv"></canvas>
     <div class="cover-in">
-      <div class="logo-big">
-        <div class="lb-patch">قعدة</div>
-        <div class="lb-sticker">آخر واحد</div>
-      </div>
+      <div class="cover-fam"><span class="fam-ch"></span><b>تحدّي ولعب</b></div>
+      <div class="cover-icon" id="coverIcon"></div>
+      <div class="cover-name">قعدة آخر واحد</div>
       <p class="cover-sub">مين بيضل للآخر؟</p>
       <div class="ticker"><div class="ticker-in" id="ticker"></div></div>
       <div class="cover-btns">
@@ -94,6 +93,7 @@
         <div class="row between"><h3 id="lobbyName">القعدة</h3><span class="pill" id="lobbyCount">0</span></div>
         <div class="group-ph" id="groupPh"><img id="groupImg" alt=""><span>صورة الشلة</span></div>
         <div class="players" id="lobbyPlayers"></div>
+        <button class="btn sm wide" id="editMe">✏️ عدّل اسمي وصورتي</button>
       </div>
       <div class="card" id="hostBox">
         <h3>إعدادات الريس</h3>
@@ -103,7 +103,7 @@
         <button class="btn big pri wide" id="startBtn">لفّ الدولاب!</button>
         <p class="muted sm center" id="startHint">لازم يكون في لاعبين عالأقل</p>
       </div>
-      <div class="card hide" id="guestWait"><p class="center">استنى الريس يلفّ الدولاب… 🎡</p><div class="gsel ro" id="gSelG"></div><button class="btn sm wide" id="editMe">عدّل اسمي وصورتي</button></div>
+      <div class="card hide" id="guestWait"><p class="center">استنى الريس يلفّ الدولاب… 🎡</p><div class="gsel ro" id="gSelG"></div></div>
     </div>
   </section>
 
@@ -169,10 +169,11 @@
       </div>
       <div class="card">
         <h3>صورة الستوري</h3>
-        <div class="seg" id="storyLayout"><button data-l="sign">لافتة</button><button data-l="polaroid">بولاريد</button><button data-l="card">كرت</button></div>
+        <div class="seg" id="storyLayout"><button data-l="cover">غلاف</button><button data-l="polaroid">بولاريد</button><button data-l="sticker">ستيكر</button></div>
         <div class="seg sm" id="storyTheme"><button data-m="light">فاتح</button><button data-m="dark">داكن</button></div>
         <div class="story-prev"><canvas id="storyCv" width="1080" height="1920"></canvas></div>
         <div class="row wrap center"><button class="btn pri" id="dlStory">نزّل الصورة</button><button class="btn" id="shareFriends">شارك مع صحابك</button></div>
+        <button class="btn sm wide" id="editMe2">✏️ عدّل اسمي وصورتي عالصورة</button>
         <div class="install hide" id="installBox"><p>نزّل «قعدة آخر واحد» كتطبيق عموبايلك</p><button class="btn sm" id="installBtn">نزّل التطبيق</button></div>
       </div>
       <div class="card host-only">
@@ -200,6 +201,7 @@
 <div id="toast"></div>
 
 <script src="vendor/qrcode.js"></script>
+<script src="brand.js"></script>
 <script src="sound.js"></script>
 <script src="draw.js"></script>
 <script src="games-ui.js"></script>

@@ -180,10 +180,10 @@ class Tug extends Bracket {
 // 2) حجرة ورقة مقص
 const BEATS = { r: 's', s: 'p', p: 'r' };
 class RPS extends Bracket {
-  initMatch(m) { m.score = {}; m.ps.forEach((p) => (m.score[p] = 0)); m.picks = {}; m.throwEnd = 0; m.reveal = null; m.revealEnd = 0; m.n = 0; }
+  initMatch(m) { m.score = {}; m.ps.forEach((p) => (m.score[p] = 0)); m.picks = {}; m.throwEnd = 0; m.reveal = null; m.revealEnd = 0; m.n = 0; if (m.ps.length === 3) { m.lives = {}; m.ps.forEach((p) => (m.lives[p] = 2)); } }   // بالتلاتية: كل واحد إلو فرصتين
   onFightStart(m) { this.nextThrow(m); }
   nextThrow(m) { m.picks = {}; m.reveal = null; m.throwEnd = now() + 6000; m.n++; }
-  onShrink(m) { m.active.forEach((p) => (m.score[p] = 0)); }
+  onShrink(m) { if (!m.lives) m.active.forEach((p) => (m.score[p] = 0)); }
   matchInput(m, pid, msg) { if (msg.a === 'pick' && !m.reveal && ['r', 'p', 's'].includes(msg.v)) { m.picks[pid] = msg.v; if (m.active.every((p) => m.picks[p])) m.throwEnd = 0; } }
   tickMatch(m) {
     const t = now();
@@ -208,8 +208,16 @@ class RPS extends Bracket {
   }
   afterReveal(m) {
     const r = m.res; m.res = null;
-    if (m.n > 14) { this.endMatch(m, m.active[rint(0, m.active.length - 1)]); return; }
+    if (m.n > (m.lives ? 40 : 14)) { this.endMatch(m, m.active[rint(0, m.active.length - 1)]); return; }
     if (!r || r.draw) return this.nextThrow(m);
+    if (m.lives) {   // تلاتية: كل رمية خسرانة بتاخد فرصة، واللي بتخلص فرصتيه بيطلع
+      r.losers.forEach((p) => (m.lives[p] = Math.max(0, m.lives[p] - 1)));
+      const dead = r.losers.filter((p) => m.lives[p] <= 0);
+      if (dead.length >= m.active.length) { dead.forEach((p) => (m.lives[p] = 1)); return this.nextThrow(m); }   // ما بيطلعوا الكل سوا
+      dead.forEach((p) => { if (!m.done) this.knock(m, p); });
+      if (!m.done) this.nextThrow(m);
+      return;
+    }
     if (m.active.length === 2) {
       r.winners.forEach((p) => m.score[p]++);
       const w = m.active.find((p) => m.score[p] >= 2);
@@ -221,7 +229,7 @@ class RPS extends Bracket {
     r.losers.forEach((p) => this.knock(m, p));
     if (!m.done) this.nextThrow(m);
   }
-  matchView(m) { return { score: m.score, picked: Object.keys(m.picks), reveal: m.reveal, throwEnd: m.throwEnd }; }
+  matchView(m) { return { score: m.score, lives: m.lives || null, picked: Object.keys(m.picks), reveal: m.reveal, throwEnd: m.throwEnd }; }
 }
 
 // 3) معركة المخدّات
@@ -278,8 +286,11 @@ class Slipper extends ElimGame {
       const open = opp.filter((q) => !this.st[q].hide);
       const pool = open.length ? open : opp;
       const to = pool[rint(0, pool.length - 1)];
-      s.next = t + 1000;
-      this.fly.push({ id: ++this.seq, from: p, to, at: t, land: t + 800 });
+      // آخر اتنين: كل شحاطة أسرع من اللي قبلها (بتنرمى أسرع وبتوصل أسرع)
+      let gap = 1000, fly = 800;
+      if (al.length === 2) { this.duoN = (this.duoN || 0) + 1; const k = Math.pow(0.9, this.duoN); gap = Math.max(320, 1000 * k); fly = Math.max(260, 800 * k); }
+      s.next = t + gap;
+      this.fly.push({ id: ++this.seq, from: p, to, at: t, land: t + fly });
     }
     const outs = [];
     for (const f of this.fly) {
@@ -770,10 +781,11 @@ class Hockey extends Bracket {
       this.knock(m, (pr[a] || 0) >= (pr[b] || 0) ? b : a);
     }
   }
+  get pushEvery() { return 0.033; }   // الهوكي بدها تحديث أسرع لتمشي الطابة ناعمة
   matchView(m) {
     const r = (v) => Math.round(v * 1000) / 1000;
     const pd = {}; for (const p in m.pd) pd[p] = [r(m.pd[p].x), r(m.pd[p].y)];
-    return { pair: m.pair, wait: m.wait, sc: m.sc, pd, pk: [r(m.pk.x), r(m.pk.y)], freeze: m.freeze, goal: m.goal, max: m.max, sudden: !!m.sudden, hitAt: m.hitAt || 0 };
+    return { pair: m.pair, wait: m.wait, sc: m.sc, pd, pk: [r(m.pk.x), r(m.pk.y)], pv: [r(m.pk.vx), r(m.pk.vy)], frozen: now() < m.freeze, freeze: m.freeze, goal: m.goal, max: m.max, sudden: !!m.sudden, hitAt: m.hitAt || 0 };
   }
 }
 

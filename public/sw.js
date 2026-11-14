@@ -1,7 +1,7 @@
 // تخزين الملفات الثابتة لتشتغل اللعبة كتطبيق حتى لو النت ضعيف
-const V = 'akw-v6';
-const FILES = ['/', '/index.html', '/style.css', '/app.js', '/draw.js', '/games-ui.js', '/story.js', '/sound.js', '/vendor/qrcode.js', '/manifest.json', '/icons/icon-192.png', '/icons/icon-512.png',
-  '/fonts/lalezar-ar.woff2', '/fonts/lalezar-la.woff2',
+const V = 'akw-v8';
+const FILES = ['/', '/index.html', '/style.css', '/app.js', '/draw.js', '/games-ui.js', '/story.js', '/brand.js', '/sound.js', '/vendor/qrcode.js', '/manifest.json', '/icons/icon-192.png', '/icons/icon-512.png',
+  '/fonts/lalezar-ar.woff2', '/fonts/lalezar-la.woff2', '/fonts/changa-ar-800.woff2', '/fonts/changa-ar-600.woff2', '/fonts/changa-la-800.woff2',
   '/fonts/plex-ar-400.woff2', '/fonts/plex-ar-600.woff2', '/fonts/plex-ar-700.woff2',
   '/fonts/plex-la-400.woff2', '/fonts/plex-la-600.woff2', '/fonts/plex-la-700.woff2'];
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(V).then((c) => c.addAll(FILES)).then(() => self.skipWaiting())); });

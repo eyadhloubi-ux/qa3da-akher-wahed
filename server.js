@@ -175,7 +175,7 @@ function startGame(room) {
     const t = now(), dt = Math.min(0.1, (t - last) / 1000); last = t;
     try { game.tick(dt); } catch (e) { console.error('tick', cur.gid, e); }
     acc += dt;
-    if (game.realtime && acc >= 0.05) { acc = 0; pushGame(room); }
+    if (game.realtime && acc >= (game.pushEvery || 0.05)) { acc = 0; pushGame(room); }
   }, 33);
 }
 

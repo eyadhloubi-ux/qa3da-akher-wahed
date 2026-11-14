@@ -29,6 +29,11 @@
     const l = f ? ENC_F : ENC_M; let h = 0; for (const ch of id || '') h = (h * 31 + ch.charCodeAt(0)) % 997; return l[h % l.length];
   }
 
+  // ───── الهوية ─────
+  document.querySelectorAll('.fam-ch').forEach((el) => (el.innerHTML = BRAND.chairSVG(30)));
+  $('#coverIcon').innerHTML = BRAND.iconSVG(132);
+  $('#editMe2') && ($('#editMe2').onclick = () => $('#editMe').click());
+
   // ───── الحالة ─────
   const S = { ws: null, code: null, token: null, me: null, room: null, g: null, offset: 0, rtt: 1e9, lastMsg: 0, retry: 0, mode: null, pendingCreate: null, wantClose: false, gkey: '', lastFlash: 0, introKey: '', wheelKey: '', revealStep: -1, finalKey: '', gphoto: null };
   const sNow = () => Date.now() + S.offset;
@@ -90,7 +95,7 @@
       case 'you': S.me = m.id; S.token = m.token; S.code = m.code; saveTok(); setUrl(); break;
       case 'room': S.room = m.room; S.offset = S.offset || m.room.now - Date.now(); route(); break;
       case 'guest': S.room = m.room; S.me = null; showJoinProfile(); break;
-      case 'g': S.g = m.g; onGame(); break;
+      case 'g': S.g = m.g; S.g._rx = performance.now(); onGame(); break;
       case 'photo': D.setPhoto(m.id, m.data); setTimeout(refreshAvatars, 60); break;
       case 'gphoto': S.gphoto = m.data; if (m.data) D.setPhoto('__group', m.data); setTimeout(refreshGroup, 60); break;
       case 'noroom': toast('ما لقينا هالقعدة… يمكن خلصت'); S.code = null; history.replaceState(null, '', location.pathname); show('cover'); break;
@@ -467,10 +472,10 @@
   $('#skipReveal').onclick = () => send({ t: 'skipReveal' });
 
   // ───── النتيجة النهائية ─────
-  let storyL = 'sign', storyT = 'light';
+  let storyL = 'cover', storyT = 'light';
   function renderFinal() {
     const r = S.room, rv = r.reveal; if (!rv) return;
-    const key = r.seq + ':' + r.players.map((p) => p.photoVer).join(',');
+    const key = r.seq + ':' + r.players.map((p) => p.photoVer + p.name).join(',') + (r.name || '');
     if (S.finalKey === key) return; S.finalKey = key;
     $('#finalList').innerHTML = rv.final.map((f) => rankRow(f, title(f.pos, (P(f.id) || {}).gender, f.id))).join('');
     $('#finalGames').innerHTML = r.played.map((g, i) => `<div class="gtab"><b>${i + 1}. ${GAMES[g.gid].icon} ${GAMES[g.gid].name}</b><div class="gl">${g.rank.map((x) => `<span>${x.pos}. ${esc((P(x.id) || {}).name)} +${x.pts}</span>`).join('')}</div></div>`).join('');
@@ -483,9 +488,10 @@
     const r = S.room; if (!r || !r.reveal) return; const p = me(); if (!p) return;
     $$('#storyLayout button').forEach((b) => b.classList.toggle('on', b.dataset.l === storyL));
     $$('#storyTheme button').forEach((b) => b.classList.toggle('on', b.dataset.m === storyT));
-    try { await document.fonts.load('80px Lalezar'); await document.fonts.load('700 40px Plex'); } catch (e) {}
+    try { await document.fonts.load('800 80px Changa'); await document.fonts.load('80px Lalezar'); await document.fonts.load('700 40px Plex'); await document.fonts.load('600 40px Plex'); } catch (e) {}
+    for (const im of [BRAND.chairImg(), BRAND.iconImg()]) if (!im.complete) await new Promise((ok) => { im.onload = ok; im.onerror = ok; setTimeout(ok, 1500); });
     const f = r.reveal.final.find((x) => x.id === p.id) || { pos: r.players.length, pts: 0, f: 0 };
-    STORY.render($('#storyCv'), { name: p.name, color: p.color, photo: D.photo(p.id), group: D.photo('__group'), sess: `${r.name} · ${r.type}`, pos: f.pos, pts: f.pts, f: f.f, title: title(f.pos, p.gender, p.id), games: r.played.length }, storyL, storyT);
+    STORY.render($('#storyCv'), { name: p.name, color: p.color, photo: D.photo(p.id), group: D.photo('__group'), sess: `${r.name} · ${r.type}`, sessName: r.name, crew: r.players.map((q) => ({ name: q.name, color: q.color, photo: D.photo(q.id) })), pos: f.pos, pts: f.pts, f: f.f, title: title(f.pos, p.gender, p.id), games: r.played.length }, storyL, storyT);
   }
   $('#dlStory').onclick = () => { $('#storyCv').toBlob(async (b) => { const file = new File([b], 'qa3da-akher-wahed.png', { type: 'image/png' }); if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: 'قعدة آخر واحد' }); return; } catch (e) {} } const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'qa3da-akher-wahed.png'; a.click(); }, 'image/png'); };
   $('#shareFriends').onclick = () => { if (navigator.share) navigator.share({ title: 'قعدة', text: 'تعوا العبوا معنا 👇', url: IG }).catch(() => {}); else window.open(IG, '_blank'); };
@@ -512,6 +518,7 @@
     }
     h += '<button class="btn" data-a="me">✏️ عدّل اسمي وصورتي</button>';
     h += '<button class="btn ghost" data-a="leave">🚪 اطلع من القعدة</button></div>';
+    if (onlyPlayers) h += '<button class="btn wide" data-a="me">✏️ عدّل اسمي وصورتي</button>';
     h += `<h3 style="margin-top:14px">اللاعبين (${r.players.length})</h3>`;
     h += r.players.slice().sort((a, b) => a.joined - b.joined).map((p) => `<div class="pman">${avatarHTML(p.id)}<div class="nm">${esc(p.name)}${p.id === r.hostId ? ' 👑' : ''}<small>${p.online ? 'متصل' : 'مو متصل'} · ${p.total} نقطة</small></div>${host && p.id !== S.me ? `<button class="btn sm" data-ren="${p.id}">اسم</button><button class="btn sm" data-host="${p.id}">ريس</button><button class="btn sm pri" data-kick="${p.id}">${p.gender === 'f' ? 'طلّعها' : 'طلّعو'}</button>` : ''}</div>`).join('');
     if (!host) { const hp = P(r.hostId); if (hp && !hp.online) h += '<button class="btn wide" data-a="claim">الريس مو متصل… صير إنت الريس</button>'; }

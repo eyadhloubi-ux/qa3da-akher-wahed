@@ -24,7 +24,7 @@ const D = (() => {
       c.drawImage(im, x - (im.naturalWidth * s) / 2, y - (im.naturalHeight * s) / 2, im.naturalWidth * s, im.naturalHeight * s);
       c.restore();
     } else {
-      c.fillStyle = '#fff'; c.font = `${Math.round(r * 1.05)}px Lalezar, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.fillStyle = '#fff'; c.font = `${Math.round(r * 1.05)}px Changa, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
       c.fillText(initials(pl && pl.name), x, y + r * 0.12);
     }
     c.lineWidth = Math.max(2, r * 0.16); c.strokeStyle = pl ? pl.color : '#999';
@@ -155,7 +155,7 @@ const D = (() => {
 
   function txt(c, s, x, y, size, o = {}) {
     c.save();
-    c.font = `${o.w || ''} ${size}px ${o.f || 'Lalezar'}, Plex, sans-serif`; c.textAlign = o.a || 'center'; c.textBaseline = 'middle';
+    c.font = `${o.w || ''} ${size}px ${o.f || 'Changa'}, Plex, sans-serif`; c.textAlign = o.a || 'center'; c.textBaseline = 'middle';
     if (o.stroke) { c.lineWidth = o.sw || size * 0.18; c.strokeStyle = o.stroke; c.lineJoin = 'round'; c.strokeText(s, x, y); }
     c.fillStyle = o.color || css.ink; c.fillText(s, x, y);
     c.restore();
@@ -163,7 +163,7 @@ const D = (() => {
 
   function sticker(c, s, x, y, size, bg, fg, rot = 0) {
     c.save(); c.translate(x, y); c.rotate(rot);
-    c.font = `${size}px Lalezar, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.font = `${size}px Changa, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
     const w = c.measureText(s).width + size * 0.9, h = size * 1.35;
     c.fillStyle = css.line; rr(c, -w / 2 + 3, -h / 2 + 3, w, h, size * 0.35); c.fill();
     c.fillStyle = bg; rr(c, -w / 2, -h / 2, w, h, size * 0.35); c.fill(); c.lineWidth = 2.5; c.strokeStyle = css.line; c.stroke();

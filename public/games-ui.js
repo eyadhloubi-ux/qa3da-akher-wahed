@@ -164,7 +164,8 @@ const GUI = (() => {
           const by = hd.top[1] - s * 1.1;
           c.fillStyle = css().paper; c.strokeStyle = css().line; c.lineWidth = 2; c.beginPath(); c.arc(x, by, s * 0.95, 0, 7); c.fill(); c.stroke();
           D.txt(c, bub, x, by + 2, s * (m.reveal ? 1.2 : 0.9), { f: 'Plex', w: 700 });
-          if (m.ps.length === 2 || m.active.length === 2) for (let k = 0; k < 2; k++) { c.fillStyle = (m.score[p] || 0) > k ? css().acc2 : 'rgba(0,0,0,.15)'; c.beginPath(); c.arc(x - s * 0.4 + k * s * 0.8, y + s * 1.5, s * 0.24, 0, 7); c.fill(); c.strokeStyle = css().line; c.lineWidth = 1.5; c.stroke(); }
+          if (m.lives) { if (m.active.includes(p)) D.hearts(c, x, y + s * 1.5, m.lives[p] || 0, 2, Math.max(7, s * 0.4)); }
+          else if (m.ps.length === 2 || m.active.length === 2) for (let k = 0; k < 2; k++) { c.fillStyle = (m.score[p] || 0) > k ? css().acc2 : 'rgba(0,0,0,.15)'; c.beginPath(); c.arc(x - s * 0.4 + k * s * 0.8, y + s * 1.5, s * 0.24, 0, 7); c.fill(); c.strokeStyle = css().line; c.lineWidth = 1.5; c.stroke(); }
         });
         if (m.ps.length === 2) vsMark(c, cx, gy - s * 2, r.big ? 18 : 11);
         if (!m.done && !m.reveal && g.phase === 'fight' && m.throwEnd) { const left = Math.max(0, (m.throwEnd - now) / 6000); c.fillStyle = 'rgba(0,0,0,.12)'; c.fillRect(r.x + 10, r.y + 8, r.w - 20, 5); c.fillStyle = css().acc; c.fillRect(r.x + 10, r.y + 8, (r.w - 20) * left, 5); }
@@ -213,7 +214,7 @@ const GUI = (() => {
     controls(el) {
       el.innerHTML = '';
       const box = document.createElement('div'); box.style.cssText = 'flex:1;max-width:420px;display:flex;flex-direction:column;gap:6px;justify-content:center';
-      box.innerHTML = '<div style="font-family:Lalezar;font-size:24px;text-align:center">انفخ عالمايك! 🌬️</div><div class="meter"><i id="blowM"></i></div>';
+      box.innerHTML = '<div style="font-family:Changa;font-size:24px;text-align:center">انفخ عالمايك! 🌬️</div><div class="meter"><i id="blowM"></i></div>';
       el.appendChild(box);
       this.meter = box.querySelector('#blowM');
       this.fallback = null;
@@ -298,7 +299,7 @@ const GUI = (() => {
         slipperAt(c, x, y, s * 0.6, k * 12);
       }
       if (!g.go) D.sticker(c, 'استعدّوا…', w / 2, h * 0.14, 24, css().acc2, '#1E1B18', -0.04);
-      else { const left = Math.max(0, g.max - g.t); if (left <= 15) D.sticker(c, `${left} ث`, w / 2, 22, 14, css().bad, '#fff', 0); }
+      else { const left = Math.max(0, g.max - g.t); if (left <= 15) D.sticker(c, `${left} ث`, w / 2, 22, 14, css().bad, '#fff', 0); if (g.alive.length === 2) D.sticker(c, 'آخر اتنين… الشحاطات عم تسرع!', w / 2, h * 0.14, 16, css().acc, '#fff', -0.04); }
     },
   };
 
@@ -524,7 +525,8 @@ const GUI = (() => {
         const r = pad.getBoundingClientRect();
         const x = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)), y = 0.5;
         dot.style.left = x * 100 + '%'; dot.style.top = '50%';
-        const t = performance.now(); if (t - last < 30) return; last = t;
+        const t = performance.now(); this.localX = x; if (t - last < 25) return; last = t;
+        this.localX = x; this.localAt = performance.now();
         A.send({ a: 'pad', x: Math.round(x * 1000) / 1000, y: Math.round(y * 1000) / 1000 });
       };
       pad.addEventListener('pointerdown', (e) => { e.preventDefault(); act = true; try { pad.setPointerCapture(e.pointerId); } catch (x) {} SFX.unlock(); setFrom(e); });
@@ -559,10 +561,16 @@ const GUI = (() => {
         const sides = flip ? [m.pair[1], m.pair[0]] : [m.pair[0], m.pair[1]];
         for (const p of m.pair) {
           const q = m.pd[p]; if (!q) continue;
-          const sp = smooth('hk' + p, q[0], q[1], 0.6); const [x, y] = T(sp[0], sp[1]);
+          let qx = q[0];
+          // مضربي: بيتحرّك فوراً مع إصبعي بلا ما يستنى السيرفر
+          if (isMe(p) && this.localX != null) { const PRr = 0.08; qx = p === m.pair[0] ? PRr + this.localX * (1 - 2 * PRr) : 1 - (PRr + this.localX * (1 - 2 * PRr)); }
+          const sp = isMe(p) ? [qx, q[1]] : smooth('hk' + p, qx, q[1], 0.45); const [x, y] = T(sp[0], sp[1]);
           D.head(c, x, y, 0.08 * TW, P(p), { me: isMe(p) });
         }
-        const kp = smooth('hkp' + m.id + m.pair.join(''), m.pk[0], m.pk[1], 0.75); const [px, py] = T(kp[0], kp[1]);
+        // الطابة: منكمّل حركتها حسب سرعتها لحد ما يوصل التحديث الجاي (بلا تقطيش)
+        let ex = m.pk[0], ey = m.pk[1];
+        if (m.pv && !m.frozen && g._rx) { const dt = Math.min(0.12, (performance.now() - g._rx) / 1000); ex += m.pv[0] * dt; ey += m.pv[1] * dt; const KRr = 0.042; if (ex < KRr) ex = 2 * KRr - ex; if (ex > 1 - KRr) ex = 2 * (1 - KRr) - ex; }
+        const kp = smooth('hkp' + m.id + m.pair.join(''), ex, ey, 0.55); const [px, py] = T(kp[0], kp[1]);
         c.fillStyle = '#1E1B18'; c.beginPath(); c.arc(px, py, 0.042 * TW, 0, 7); c.fill(); c.strokeStyle = css().acc2; c.lineWidth = 2; c.stroke();
         // النتيجة
         const fs = r.big ? 15 : 10;
@@ -605,7 +613,7 @@ const GUI = (() => {
         const k = Math.max(0, 1 - (now - b.at) / b.win);
         c.fillStyle = col; D.rr(c, cx - S0 / 2 + 6, cy - S0 / 2 + 6, S0 - 12, S0 - 12, 14); c.fill();
         D.txt(c, MV[b.mv].ar, cx, cy, S0 * 0.55, { f: 'Plex', color: b.mv === 'D' ? '#1E1B18' : '#fff' });
-        D.txt(c, MV[b.mv].t, cx, cy + S0 * 0.36, Math.min(22, S0 * 0.13), { f: 'Lalezar', color: b.mv === 'D' ? '#1E1B18' : '#fff' });
+        D.txt(c, MV[b.mv].t, cx, cy + S0 * 0.36, Math.min(22, S0 * 0.13), { f: 'Changa', color: b.mv === 'D' ? '#1E1B18' : '#fff' });
         c.fillStyle = 'rgba(0,0,0,.15)'; c.fillRect(cx - S0 / 2, cy + S0 / 2 + 8, S0, 6); c.fillStyle = css().ink; c.fillRect(cx - S0 / 2, cy + S0 / 2 + 8, S0 * k, 6);
       } else if (g.t0 > now) D.txt(c, String(Math.ceil((g.t0 - now) / 1000)), cx, cy, S0 * 0.5, { color: css().ink });
       else D.txt(c, '…', cx, cy, S0 * 0.4, { color: css().muted });
