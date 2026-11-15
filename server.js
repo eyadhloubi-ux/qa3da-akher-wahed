@@ -21,6 +21,9 @@ const bump = (k, sub) => { if (sub) { stats[k][sub] = (stats[k][sub] || 0) + 1; 
 
 // ───────── التطبيق ─────────
 const app = express();
+// منطق الألعاب نفسه بينبعت للمتصفح لفيديو «كيف منلعب» (محاكاة محلية)
+const LOGIC_JS = '(function(){\n' + fs.readFileSync(path.join(__dirname, 'games.js'), 'utf8') + '\n})();';
+app.get('/logic.js', (q, r) => { r.type('application/javascript').setHeader('Cache-Control', 'public, max-age=3600'); r.send(LOGIC_JS); });
 app.use(express.static(path.join(__dirname, 'public'), { maxAge: '1h', setHeaders: (res, p) => { if (/sw\.js$|index\.html$/.test(p)) res.setHeader('Cache-Control', 'no-cache'); } }));
 app.get('/health', (q, r) => r.send('ok'));
 app.get('/stats', (q, r) => r.json(Object.assign({}, stats, { liveRooms: rooms.size, livePlayers: [...rooms.values()].reduce((s, x) => s + [...x.players.values()].filter((p) => p.online).length, 0) })));
@@ -72,7 +75,7 @@ function pubPlayer(p) { return { id: p.id, name: p.name, gender: p.gender, color
 
 function roomView(room) {
   return {
-    code: room.code, hostId: room.hostId, name: room.name, type: room.type, count: room.games.length, games: room.games, groupPhotoVer: room.groupPhoto ? room.groupPhotoVer : 0,
+    code: room.code, hostId: room.hostId, name: room.name, type: room.type, count: room.games.length, games: room.games, revealMode: room.revealMode || 'one', groupPhotoVer: room.groupPhoto ? room.groupPhotoVer : 0,
     players: [...room.players.values()].map(pubPlayer), phase: room.phase, seq: room.seq,
     played: room.played.filter((g) => !g.cancelled).map((g) => ({ gid: g.gid, rank: g.rank })),
     cur: room.cur ? { gid: room.cur.gid, ids: room.cur.ids, stage: room.cur.stage, startAt: room.cur.startAt, rank: room.cur.rank || null, n: room.cur.n } : null,
@@ -206,7 +209,12 @@ function toReveal(room) {
   const final = []; let pos = 0;
   ps.forEach((p, i) => { const prev = ps[i - 1]; if (!prev || prev.pts !== p.pts || prev.f !== p.f || prev.t3 !== p.t3) pos = i + 1; final.push({ id: p.id, pos, pts: p.pts, f: p.f }); });
   const positions = [...new Set(final.map((f) => f.pos))].sort((a, b) => b - a);
-  room.reveal = { final, positions, step: 0, done: false };
+  // حفلة الكشف: واحد واحد (من الأخير للأول)، أو الباقي دفعة وبعدين التالت والتاني والأول، أو الكل سوا
+  const mode = room.revealMode || 'one';
+  let steps = positions.map((p) => [p]);
+  if (mode === 'top3') { const rest = positions.filter((p) => p > 3); steps = (rest.length ? [rest] : []).concat(positions.filter((p) => p <= 3).map((p) => [p])); }
+  if (mode === 'all') steps = [positions.slice()];
+  room.reveal = { final, positions, steps, mode, step: 0, done: false };
   stats.finished++; statsDirty = true;
   pushRoom(room);
   revealTick(room);
@@ -214,10 +222,10 @@ function toReveal(room) {
 
 function revealTick(room) {
   const rv = room.reveal; if (!rv || rv.done) return;
-  const wait = rv.step === 0 ? 2500 : (rv.positions[rv.step - 1] <= 3 ? 4200 : 2600);
+  const last = rv.steps[rv.step - 1]; const wait = rv.step === 0 ? 2500 : rv.mode === 'all' ? 6000 : (Math.min(...last) <= 3 ? 4200 : 2600);
   later(room, wait, () => {
     if (!room.reveal) return;
-    if (rv.step < rv.positions.length) { rv.step++; pushRoom(room); revealTick(room); }
+    if (rv.step < rv.steps.length) { rv.step++; pushRoom(room); revealTick(room); }
     else { rv.done = true; room.phase = 'final'; pushRoom(room); }
   });
 }
@@ -340,6 +348,7 @@ function handle(ws, m) {
     case 'session': {
       if (m.name !== undefined) room.name = cleanName(m.name, 30) || room.name;
       if (m.type !== undefined) room.type = cleanName(m.type, 20) || room.type;
+      if (['one', 'top3', 'all'].includes(m.reveal)) room.revealMode = m.reveal;
       if (Array.isArray(m.games) && room.phase === 'lobby') { const sel = GAME_IDS.filter((g) => m.games.includes(g)); if (sel.length) { room.games = sel; room.sel = sel.slice(); } }
       if (m.groupPhoto !== undefined) { room.groupPhoto = cleanPhoto(m.groupPhoto); room.groupPhotoVer++; broadcast(room, { t: 'gphoto', v: room.groupPhotoVer, data: room.groupPhoto }); }
       return pushRoom(room);
@@ -361,8 +370,8 @@ function handle(ws, m) {
     case 'endGame': { if (room.cur && room.cur.game && room.cur.stage === 'play') room.cur.game.forceEnd(); return; }
     case 'next': { if (room.cur && room.cur.stage === 'over') spinWheel(room); return; }
     case 'finish': return toReveal(room);
-    case 'skipReveal': { if (room.reveal) { clearTimers(room); room.reveal.step = room.reveal.positions.length; room.reveal.done = true; room.phase = 'final'; pushRoom(room); } return; }
-    case 'newSession': return resetSession(room, !!m.same);
+    case 'skipReveal': { if (room.reveal) { clearTimers(room); room.reveal.step = room.reveal.steps.length; room.reveal.done = true; room.phase = 'final'; pushRoom(room); } return; }
+    case 'newSession': { if (m.zero) { room.name = 'قعدتنا'; room.type = 'شلة'; room.sel = null; room.revealMode = 'one'; } return resetSession(room, !!m.same); }
     case 'kick': return kick(room, m.id);
     case 'rename': { const p = room.players.get(m.id); if (p) { p.name = cleanName(m.name) || p.name; pushRoom(room); } return; }
     case 'transfer': return setHost(room, m.id);

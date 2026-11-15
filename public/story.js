@@ -16,7 +16,7 @@ const STORY = (() => {
   function rr(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
   function fit(c, s, max, size, font) { let fs = size; do { c.font = font.replace('%', fs); if (c.measureText(s).width <= max) break; fs -= 2; } while (fs > 18); return fs; }
   function txt(c, s, x, y, size, color, o = {}) {
-    const f = o.font || '800 %px Changa, Plex, sans-serif';
+    const f = o.font || '800 %px Changa, Changa, sans-serif';
     const fs = fit(c, s, o.max || 940, size, f);
     c.font = f.replace('%', fs); c.textAlign = o.a || 'center'; c.textBaseline = o.b || 'middle'; c.direction = o.dir || 'rtl';
     if (o.stroke) { c.lineJoin = 'round'; c.lineWidth = o.sw || fs * 0.16; c.strokeStyle = o.stroke; c.strokeText(s, x, y); }
@@ -34,16 +34,14 @@ const STORY = (() => {
     c.lineWidth = Math.max(3, r * 0.07); c.strokeStyle = INK; c.beginPath(); c.arc(x, y, r, 0, 7); c.stroke();
   }
   // صورة الشلة، وإذا ما في: وجوه الشلة مصفوفين
+  // صورة الشلة، وإذا ما في: اسم القعدة محلها (قواعد قعدة)
   function group(c, d, x, y, w, h, bg) {
     if (d.group && d.group.naturalWidth) { cover(c, d.group, x, y, w, h); return; }
     c.fillStyle = bg || '#E8A317'; c.fillRect(x, y, w, h);
-    const crew = (d.crew || []).slice(0, 12); const n = Math.max(1, crew.length);
-    const cols = n > 8 ? 6 : n > 4 ? 4 : n, rows = Math.ceil(n / cols);
-    const r = Math.min(w / (cols * 2.35), h / (rows * 2.35));
-    crew.forEach((m, i) => {
-      const row = Math.floor(i / cols), col = i % cols, inRow = Math.min(cols, n - row * cols);
-      headCircle(c, m, x + w / 2 + (col - (inRow - 1) / 2) * r * 2.25, y + h / 2 + (row - (rows - 1) / 2) * r * 2.25, r);
-    });
+    c.save(); c.globalAlpha = 0.12; c.fillStyle = INK; for (let i = -h; i < w; i += 46) { c.beginPath(); c.moveTo(x + i, y + h); c.lineTo(x + i + h, y); c.lineTo(x + i + h + 18, y); c.lineTo(x + i + 18, y + h); c.fill(); } c.restore();
+    const nm = d.sessName || d.sess || 'قعدتنا';
+    txt(c, nm, x + w / 2, y + h / 2 - h * 0.06, Math.min(h * 0.3, 110), INK, { max: w * 0.86 });
+    if (d.sessType) txt(c, d.sessType, x + w / 2, y + h / 2 + h * 0.22, Math.min(h * 0.12, 40), INK, { font: '600 %px Changa, sans-serif', max: w * 0.8 });
   }
   function ptsLine(d) { const p = Math.round(d.pts * 100) / 100; return `${p} ${p === 1 ? 'نقطة' : 'نقاط'} من ${d.games} ${d.games === 1 || d.games > 10 ? 'لعبة' : 'ألعاب'}`; }
   function burst(c, x, y, r, fill, rot = 0) {
@@ -106,12 +104,12 @@ const STORY = (() => {
   // الشريط فوق: كرسي العيلة واسمها يمين، وأيقونة القعدة شمال
   function header(c, T, onDark) {
     const col = onDark ? '#F6EBD8' : INK;
-    const ch = BRAND.chairImg(); if (ch.complete && ch.naturalWidth) c.drawImage(ch, W - 56 - 78, 58, 78, 78);
-    txt(c, BRAND.FAM_NAME, W - 56 - 90, 100, 38, col, { a: 'right' });
-    BRAND.drawIcon(c, 56, 52, 88);
-    txt(c, 'قعدة آخر واحد', 56 + 88 + 18, 98, 34, col, { a: 'left', max: 300 });
+    const ch = BRAND.chairImg(); if (ch.complete && ch.naturalWidth) c.drawImage(ch, W - 60 - 84, 92, 84, 84);
+    txt(c, BRAND.FAM_NAME, W - 60 - 98, 136, 38, col, { a: 'right' });
+    BRAND.drawIcon(c, 60, 88, 96);
+    txt(c, 'قعدة آخر واحد', 60 + 96 + 18, 134, 36, col, { a: 'left', max: 300 });
   }
-  function footer(c, col) { txt(c, '@eyad.hloubi', 60, H - 60, 30, col, { font: '700 %px Plex, sans-serif', a: 'left', dir: 'ltr' }); }
+  function footer(c, col) { txt(c, '@eyad.hloubi', W / 2, H - 150, 30, col, { font: '600 %px Changa, sans-serif', a: 'center', dir: 'ltr' }); }
 
   // شخصية مرسومة وراسها صورة اللاعب (من draw.js)
   function dude(c, p, x, y, s, pose, me) {
@@ -124,16 +122,16 @@ const STORY = (() => {
   }
   function bottomName(c, d, T, y, col) {
     txt(c, d.name, W / 2, y, 96, col, { max: 940 });
-    txt(c, `${d.title} · ${ptsLine(d)}`, W / 2, y + 86, 38, col === INK ? T.soft : '#E9DCC6', { font: '700 %px Plex, sans-serif', max: 940 });
+    txt(c, `${d.title} · ${ptsLine(d)}`, W / 2, y + 86, 38, col === INK ? T.soft : '#E9DCC6', { font: '600 %px Changa, sans-serif', max: 940 });
   }
 
   // ── 1) المنصّة: حيط الحارة وصورة الشلة معلّقة عليه، يافطة اللقب، والمنصّة عليها شخصيات الأوائل
   function layoutPodium(c, d, T) {
-    sky(c, T, 420); wall(c, T, 360, 1230);
-    windowA(c, T, 70, 520, 92, 150); windowA(c, T, W - 162, 520, 92, 150);
+    sky(c, T, 420); wall(c, T, 360, 1150);
+    windowA(c, T, 70, 500, 92, 150); windowA(c, T, W - 162, 500, 92, 150);
     bunting(c, T, 372, 50, 16);
     // صورة الشلة بإطار خشب معلّقة بمسمار
-    c.save(); c.translate(W / 2, 668); c.rotate(-0.035);
+    c.save(); c.translate(W / 2, 600); c.rotate(-0.035);
     c.strokeStyle = INK; c.lineWidth = 4; c.beginPath(); c.moveTo(-160, -186); c.lineTo(0, -236); c.lineTo(160, -186); c.stroke();
     c.fillStyle = '#E8A317'; c.beginPath(); c.arc(0, -238, 11, 0, 7); c.fill(); c.lineWidth = 4; c.stroke();
     c.fillStyle = 'rgba(0,0,0,.28)'; rr(c, -280 + 14, -190 + 16, 560, 380, 12); c.fill();
@@ -142,32 +140,32 @@ const STORY = (() => {
     c.lineWidth = 5; c.strokeRect(-252, -162, 504, 324);
     c.restore();
     // يافطة اللقب (يافطة محل)
-    c.save(); c.translate(W / 2, 958);
+    c.save(); c.translate(W / 2, 858);
     c.fillStyle = INK; rr(c, -360 + 10, -66 + 10, 720, 132, 16); c.fill();
     c.fillStyle = '#1F6B4A'; rr(c, -360, -66, 720, 132, 16); c.fill(); c.lineWidth = 7; c.strokeStyle = INK; c.stroke();
     c.strokeStyle = '#FFF6E6'; c.lineWidth = 3; rr(c, -342, -50, 684, 100, 10); c.stroke();
     txt(c, d.title, 0, 4, 78, '#FFF6E6', { max: 620 });
     c.restore();
-    ground(c, T, 1230);
+    ground(c, T, 1150);
     // المنصّة
     const rk = d.rank || []; const by = (pos) => rk.filter((r) => r.pos === pos);
     const top = []; for (const r of rk) { if (top.length >= 3) break; top.push(r); }
     const slots = [{ x: W / 2, h: 230, n: 1, col: '#E8A317' }, { x: W / 2 + 270, h: 160, n: 2, col: '#2A7DE1' }, { x: W / 2 - 270, h: 105, n: 3, col: '#E2553D' }];
-    const baseY = 1590;
+    const baseY = 1440;
     slots.forEach((s, i) => {
       c.fillStyle = INK; c.fillRect(s.x - 120 + 10, baseY - s.h + 10, 240, s.h); c.fillStyle = s.col; c.fillRect(s.x - 120, baseY - s.h, 240, s.h); c.lineWidth = 7; c.strokeStyle = INK; c.strokeRect(s.x - 120, baseY - s.h, 240, s.h);
       txt(c, String(top[i] ? top[i].pos : s.n), s.x, baseY - s.h / 2 + 6, Math.min(110, s.h * 0.7), '#FFF6E6', { stroke: INK, sw: 10 });
-      if (top[i]) dude(c, Object.assign({ seed: i }, top[i]), s.x, baseY - s.h - 8, 64, i === 0 ? 'cheer' : 'idle', top[i].me);
+      if (top[i]) dude(c, Object.assign({ seed: i }, top[i]), s.x, baseY - s.h - 8, 56, i === 0 ? 'cheer' : 'idle', top[i].me);
     });
     // إذا مو بالتلاتة الأوائل: بيوقف قدّام بلافتة مركزه
     const mine = rk.find((r) => r.me);
     if (mine && !top.includes(mine)) {
-      dude(c, Object.assign({ seed: 7 }, mine), W - 72, 1600, 44, 'idle', false);
-      burst(c, W - 80, 1330, 52, '#E8A317', 0.2); txt(c, String(mine.pos), W - 80, 1334, 50, INK);
+      dude(c, Object.assign({ seed: 7 }, mine), W - 72, 1450, 44, 'idle', false);
+      burst(c, W - 80, 1180, 52, '#E8A317', 0.2); txt(c, String(mine.pos), W - 80, 1184, 50, INK);
     }
     // اللوحة تحت
     c.fillStyle = 'rgba(30,27,24,.0)';
-    bottomName(c, d, T, 1720, T.night ? '#F6EBD8' : INK);
+    bottomName(c, d, T, 1555, T.night ? '#F6EBD8' : INK);
     header(c, T, T.night); footer(c, T.night ? '#D9C9B2' : '#5E5145');
   }
 
@@ -188,33 +186,33 @@ const STORY = (() => {
     }
     // بقايا أفيشات قديمة
     seed = 13; for (const [x, y, w, h, col, r] of [[-40, 300, 260, 340, '#C9D9C2', 0.08], [880, 1180, 260, 380, '#F2C9A0', -0.1], [760, 220, 300, 200, '#E9B9AE', 0.05]]) { c.save(); c.translate(x + w / 2, y + h / 2); c.rotate(r); c.globalAlpha = 0.75; roughRect(c, -w / 2, -h / 2, w, h, 16); c.fillStyle = col; c.fill(); c.restore(); }
-    bunting(c, T, 170, 60, 14);
+    bunting(c, T, 200, 50, 14);
     // الأفيش
-    c.save(); c.translate(W / 2, 900); c.rotate(-0.025);
-    const pw = 860, ph = 1260, px = -pw / 2, py = -ph / 2;
+    c.save(); c.translate(W / 2, 870); c.rotate(-0.025);
+    const pw = 860, ph = 1180, px = -pw / 2, py = -ph / 2;
     c.fillStyle = 'rgba(0,0,0,.3)'; roughRect(c, px + 16, py + 20, pw, ph, 14); c.fill();
     c.fillStyle = PAPER; roughRect(c, px, py, pw, ph, 14); c.fill();
     // راس الأفيش
     c.fillStyle = '#E2553D'; c.fillRect(px + 34, py + 36, pw - 68, 150);
     txt(c, d.pos === 1 ? 'بطل الحارة' : 'من أبطال الحارة', 20, py + 112, 86, PAPER, { max: pw - 220 });
     // الصورة
-    c.save(); c.beginPath(); c.rect(px + 34, py + 210, pw - 68, 640); c.clip(); face(c, d, px + 34, py + 210, pw - 68, 640);
-    c.fillStyle = 'rgba(226,85,61,.12)'; c.fillRect(px + 34, py + 210, pw - 68, 640); c.restore();
-    c.lineWidth = 6; c.strokeStyle = INK; c.strokeRect(px + 34, py + 210, pw - 68, 640);
+    c.save(); c.beginPath(); c.rect(px + 34, py + 210, pw - 68, 580); c.clip(); face(c, d, px + 34, py + 210, pw - 68, 580);
+    c.fillStyle = 'rgba(226,85,61,.12)'; c.fillRect(px + 34, py + 210, pw - 68, 580); c.restore();
+    c.lineWidth = 6; c.strokeStyle = INK; c.strokeRect(px + 34, py + 210, pw - 68, 580);
     // الاسم
-    txt(c, d.name, 0, py + 935, 116, INK, { max: pw - 90 });
-    c.fillStyle = INK; c.fillRect(px + 60, py + 1010, pw - 120, 8);
-    txt(c, d.title, 0, py + 1080, 74, '#E2553D', { max: pw - 120 });
-    txt(c, ptsLine(d), 0, py + 1170, 36, '#5E5145', { font: '700 %px Plex, sans-serif', max: pw - 120 });
+    txt(c, d.name, 0, py + 870, 112, INK, { max: pw - 90 });
+    c.fillStyle = INK; c.fillRect(px + 60, py + 942, pw - 120, 8);
+    txt(c, d.title, 0, py + 1008, 70, '#E2553D', { max: pw - 120 });
+    txt(c, ptsLine(d), 0, py + 1090, 36, '#5E5145', { font: '600 %px Changa, sans-serif', max: pw - 120 });
     tape(c, px + 60, py + 10, 170, -0.5); tape(c, -px - 60, py + 10, 170, 0.5); tape(c, px + 60, -py - 10, 170, 0.5); tape(c, -px - 60, -py - 10, 170, -0.5);
     c.restore();
     // نجمة المركز
-    burst(c, 940, 330, 100, '#E8A317', 0.15); txt(c, '#' + d.pos, 940, 336, 82, INK, { dir: 'ltr' });
+    burst(c, 940, 300, 96, '#E8A317', 0.15); txt(c, '#' + d.pos, 940, 306, 80, INK, { dir: 'ltr' });
     // صورة الشلة: أفيش صغير ملزوق فوق الزاوية
-    c.save(); c.translate(300, 1690); c.rotate(0.06);
+    c.save(); c.translate(290, 1560); c.rotate(0.06);
     c.fillStyle = 'rgba(0,0,0,.3)'; c.fillRect(-190 + 12, -140 + 14, 380, 290); c.fillStyle = PAPER; c.fillRect(-190, -140, 380, 290);
     c.save(); c.beginPath(); c.rect(-172, -122, 344, 210); c.clip(); group(c, d, -172, -122, 344, 210); c.restore();
-    txt(c, d.sessName || d.sess, 0, 122, 34, INK, { max: 330 });
+    if (d.group && d.group.naturalWidth) txt(c, d.sessName || d.sess, 0, 122, 34, INK, { max: 330 }); else txt(c, d.sessType || '', 0, 122, 30, INK, { font: '600 %px Changa, sans-serif', max: 330 });
     tape(c, 0, -142, 140, -0.04);
     c.restore();
     header(c, T, T.night); footer(c, T.night ? '#F6EBD8' : INK);
@@ -222,12 +220,12 @@ const STORY = (() => {
 
   // ── 3) لوح الطباشير: صورة الشلة عحبل الغسيل، ولوح النتيجة بخط الطبشورة، وشخصيتك قدّامه
   function layoutBoard(c, d, T) {
-    sky(c, T, 560); wall(c, T, 520, 1640, { seed: 17 });
-    door(c, T, W - 190, 1340, 130, 280);
-    ground(c, T, 1640);
+    sky(c, T, 560); wall(c, T, 520, 1500, { seed: 17 });
+    door(c, T, W - 190, 1220, 130, 260);
+    ground(c, T, 1500);
     // حبل غسيل ومشابك
-    c.strokeStyle = INK; c.lineWidth = 5; c.beginPath(); c.moveTo(-10, 230); c.quadraticCurveTo(W / 2, 330, W + 10, 230); c.stroke();
-    c.save(); c.translate(W / 2 - 20, 520); c.rotate(0.04);
+    c.strokeStyle = INK; c.lineWidth = 5; c.beginPath(); c.moveTo(-10, 240); c.quadraticCurveTo(W / 2, 330, W + 10, 240); c.stroke();
+    c.save(); c.translate(W / 2 - 20, 500); c.rotate(0.04);
     // صورة قديمة بحواف مسنّنة
     const pw = 600, ph = 470;
     c.fillStyle = 'rgba(0,0,0,.28)'; c.fillRect(-pw / 2 + 14, -ph / 2 + 16, pw, ph);
@@ -238,11 +236,11 @@ const STORY = (() => {
     for (let y = ph / 2; y >= -ph / 2; y -= z) c.lineTo(-pw / 2 + ((y / z) % 2 ? 6 : 0), y);
     c.closePath(); c.fill();
     c.save(); c.beginPath(); c.rect(-pw / 2 + 30, -ph / 2 + 30, pw - 60, ph - 110); c.clip(); group(c, d, -pw / 2 + 30, -ph / 2 + 30, pw - 60, ph - 110); c.restore();
-    txt(c, d.sessName || d.sess, 0, ph / 2 - 42, 40, INK, { font: '700 %px Plex, sans-serif', max: pw - 80 });
+    if (d.group && d.group.naturalWidth) txt(c, d.sessName || d.sess, 0, ph / 2 - 42, 40, INK, { font: '600 %px Changa, sans-serif', max: pw - 80 }); else txt(c, '📸 ' + (d.sessType || ''), 0, ph / 2 - 42, 34, INK, { font: '600 %px Changa, sans-serif', max: pw - 80 });
     for (const xx of [-pw / 2 + 110, pw / 2 - 110]) { c.fillStyle = '#C98B4F'; c.strokeStyle = INK; c.lineWidth = 4; rr(c, xx - 14, -ph / 2 - 50, 28, 90, 8); c.fill(); c.stroke(); }
     c.restore();
     // اللوح
-    const bx = 90, by = 830, bw = 900, bh = 760;
+    const bx = 90, by = 790, bw = 900, bh = 700;
     c.fillStyle = INK; rr(c, bx + 12, by + 14, bw, bh, 18); c.fill();
     c.fillStyle = '#9A6A42'; rr(c, bx, by, bw, bh, 18); c.fill(); c.lineWidth = 7; c.strokeStyle = INK; c.stroke();
     c.fillStyle = T.board; c.fillRect(bx + 30, by + 30, bw - 60, bh - 60);
@@ -250,7 +248,7 @@ const STORY = (() => {
     txt(c, 'نتيجة القعدة', W / 2, by + 95, 60, T.chalk, { max: 700 });
     c.strokeStyle = T.chalk; c.lineWidth = 4; c.beginPath(); c.moveTo(W / 2 - 200, by + 140); c.quadraticCurveTo(W / 2, by + 152, W / 2 + 200, by + 138); c.stroke();
     const rk = d.rank || []; let rows = rk.slice(0, 5); const mine = rk.find((r) => r.me); if (mine && !rows.includes(mine)) rows = rk.slice(0, 4).concat(mine);
-    const rh = 100;
+    const rh = 92;
     rows.forEach((r, i) => {
       const y = by + 210 + i * rh;
       if (r.me) { c.strokeStyle = '#E8A317'; c.lineWidth = 6; c.beginPath(); c.ellipse(W / 2, y, 395, 46, -0.01, 0, 7); c.stroke(); }
@@ -260,9 +258,9 @@ const STORY = (() => {
       txt(c, String(Math.round(r.pts * 100) / 100), bx + 110, y + 4, 50, r.me ? '#E8A317' : T.chalk, { dir: 'ltr' });
     });
     // شخصية صاحب الستوري قدّام اللوح
-    if (mine) dude(c, Object.assign({ seed: 3 }, mine), 175, 1745, 50, mine.pos === 1 ? 'cheer' : 'idle', false);
-    txt(c, d.name, W / 2 + 90, 1720, 72, T.night ? '#F6EBD8' : INK, { max: 640 });
-    txt(c, `${d.title} · ${ptsLine(d)}`, W / 2 + 90, 1795, 34, T.night ? '#E9DCC6' : '#5E5145', { font: '700 %px Plex, sans-serif', max: 640 });
+    if (mine) dude(c, Object.assign({ seed: 3 }, mine), 165, 1650, 46, mine.pos === 1 ? 'cheer' : 'idle', false);
+    txt(c, d.name, W / 2 + 90, 1560, 72, T.night ? '#F6EBD8' : INK, { max: 640 });
+    txt(c, `${d.title} · ${ptsLine(d)}`, W / 2 + 90, 1630, 34, T.night ? '#E9DCC6' : '#5E5145', { font: '600 %px Changa, sans-serif', max: 640 });
     header(c, T, T.night); footer(c, T.night ? '#D9C9B2' : '#5E5145');
   }
 

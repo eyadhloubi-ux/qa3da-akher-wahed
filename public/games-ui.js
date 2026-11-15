@@ -163,7 +163,7 @@ const GUI = (() => {
           const bub = m.reveal && m.reveal[p] ? HAND[m.reveal[p]] : m.picked.includes(p) ? '✔' : '…';
           const by = hd.top[1] - s * 1.1;
           c.fillStyle = css().paper; c.strokeStyle = css().line; c.lineWidth = 2; c.beginPath(); c.arc(x, by, s * 0.95, 0, 7); c.fill(); c.stroke();
-          D.txt(c, bub, x, by + 2, s * (m.reveal ? 1.2 : 0.9), { f: 'Plex', w: 700 });
+          D.txt(c, bub, x, by + 2, s * (m.reveal ? 1.2 : 0.9), { f: 'Changa', w: 700 });
           if (m.lives) { if (m.active.includes(p)) D.hearts(c, x, y + s * 1.5, m.lives[p] || 0, 2, Math.max(7, s * 0.4)); }
           else if (m.ps.length === 2 || m.active.length === 2) for (let k = 0; k < 2; k++) { c.fillStyle = (m.score[p] || 0) > k ? css().acc2 : 'rgba(0,0,0,.15)'; c.beginPath(); c.arc(x - s * 0.4 + k * s * 0.8, y + s * 1.5, s * 0.24, 0, 7); c.fill(); c.strokeStyle = css().line; c.lineWidth = 1.5; c.stroke(); }
         });
@@ -202,7 +202,7 @@ const GUI = (() => {
         if (!dead) pillowAt(c, x + flip * s * 1.1, ch.hands[0][1] - (sw ? s * 0.6 : 0), s * 0.7, sw ? -0.9 * flip : 0.4 * flip);
         if (!dead) D.hearts(c, x, ch.top[1] - s * 0.55, st.hp, 3, Math.max(7, s * 0.45));
         if (st.hit > now - 400) { c.restore(); D.sticker(c, 'طاخ!', x, ch.top[1] - s * 1.5, Math.max(10, s * 0.55), css().bad, '#fff', -0.1); }
-        if (isMe(id) && st.cd > now && !dead) D.txt(c, ((st.cd - now) / 1000).toFixed(1), x, y + s * 2.3, 12, { f: 'Plex', w: 700, color: css().muted });
+        if (isMe(id) && st.cd > now && !dead) D.txt(c, ((st.cd - now) / 1000).toFixed(1), x, y + s * 2.3, 12, { f: 'Changa', w: 700, color: css().muted });
       }
       if (!g.go) D.sticker(c, 'استعدّوا…', w / 2, h * 0.15, 26, css().acc2, '#1E1B18', -0.04);
     },
@@ -219,7 +219,9 @@ const GUI = (() => {
       this.meter = box.querySelector('#blowM');
       this.fallback = null;
       this.taps = [];
-      if (!MIC.ok || MIC.bad) { box.querySelector('div').textContent = 'اكبس بسرعة! 👆'; this.fallback = btn(el, 'اكبس اكبس!', 'المايك ما زبط — كل ما كبست أسرع بتنفخ أقوى', 'y', { down: () => { this.taps.push(performance.now()); vib(5); } }); }
+      const useTaps = () => { if (this.fallback) return; MIC.setBad(true); box.querySelector('div').textContent = 'اكبس بسرعة! 👆'; this.fallback = btn(el, 'اكبس اكبس!', 'كل ما كبست أسرع بتنفخ أقوى', 'y', { down: () => { this.taps.push(performance.now()); vib(5); } }); if (this.sw) this.sw.remove(); };
+      if (!MIC.ok || MIC.bad) useTaps();
+      else { this.sw = document.createElement('button'); this.sw.className = 'btn sm ghost'; this.sw.textContent = 'المايك ما عم يلقط؟ العب بالكبس'; this.sw.onclick = useTaps; box.appendChild(this.sw); }
       this.last = 0;
     },
     tick() {
@@ -267,28 +269,45 @@ const GUI = (() => {
     controls(el) {
       el.innerHTML = '';
       this.info = note(el, '');
-      this.b = btn(el, 'اكبس لتتخبّى 🛋️', 'شيل إصبعك… بتشلّف شحاطة كل ثانية', 'alt', { down: () => { A.send({ a: 'hide', on: true }); vib(6); }, up: () => A.send({ a: 'hide', on: false }) });
+      this.b = btn(el, 'اكبس لتتخبّى 🛋️', 'شيل إصبعك… بتشلّف', 'alt', { down: () => { A.send({ a: 'hide', on: true }); vib(6); }, up: () => A.send({ a: 'hide', on: false }) });
+      // الدقّ على لاعب = بشلّف عليه
+      const cv = document.getElementById('cv'); this.cv = cv;
+      this.onTap = (e) => {
+        const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top; let best = null, bd = 1e9;
+        for (const id in this.where || {}) { if (id === A.me || !(this.alive || []).includes(id)) continue; const q = this.where[id]; const d = Math.hypot(q[0] - x, q[1] - this.sOff - y); if (d < bd) { bd = d; best = id; } }
+        if (best && bd < Math.max(70, (this.s || 14) * 4)) { A.send({ a: 'tgt', v: best }); this.myTgt = best; this.tgtAt = performance.now(); vib(10); SFX.click(); }
+      };
+      cv.addEventListener('pointerdown', this.onTap);
     },
+    cleanup() { if (this.cv && this.onTap) this.cv.removeEventListener('pointerdown', this.onTap); },
     update(g) {
       const s = g.st && g.st[A.me]; if (!s || !this.b) return;
       this.b.firstChild.textContent = s.hide ? 'متخبّي 🛋️' : 'عم تشلّف 🩴';
-      this.info.textContent = `${s.hp === 2 ? '❤️❤️' : '❤️🤍'} · صبت ${s.dealt}`;
+      setCd(this.b, 1 - (s.stam == null ? 1 : s.stam));
+      const tg = P(s.tgt); this.info.textContent = `${s.hp === 2 ? '❤️❤️' : '❤️🤍'} · عم تشلّف على ${tg.name.slice(0, 10)} · دقّ على غيره لتغيّر`;
+      if (performance.now() - (this.tgtAt || 0) > 800) this.myTgt = s.tgt;
     },
     draw(c, w, h, g) {
       D.hara(c, w, h, { wall: true }); const now = A.sNow();
-      const ids = g.alive.concat(g.flash && now - g.flash.at < 1500 ? g.flash.ids.filter((x) => !g.alive.includes(x)) : []);
-      const n = Math.max(2, ids.length), cx = w / 2, cy = h * 0.56;
+      const ring = (g.ring || g.alive).filter((id) => g.alive.includes(id) || (g.flash && now - g.flash.at < 1500 && g.flash.ids.includes(id)));
+      const n = Math.max(2, ring.length), cx = w / 2, cy = h * 0.56;
       const R = Math.min(w * 0.4, h * 0.36);
-      const s = Math.max(7, Math.min(20, (2 * Math.PI * R) / (n * 4.2)));
-      const where = {};
-      ids.forEach((id, i) => { const a = -Math.PI / 2 + (i / n) * Math.PI * 2; where[id] = [cx + Math.cos(a) * R, cy + Math.sin(a) * R * 0.82]; });
-      const order = ids.slice().sort((a, b) => where[a][1] - where[b][1]);
+      const s = Math.max(8, Math.min(22, (2 * Math.PI * R) / (n * 4)));
+      const where = {}; this.where = where; this.alive = g.alive; this.s = s; this.sOff = s * 1.6;
+      ring.forEach((id, i) => { const a = -Math.PI / 2 + (i / n) * Math.PI * 2; where[id] = [cx + Math.cos(a) * R, cy + Math.sin(a) * R * 0.82]; });
+      const mySt = g.st[A.me]; const myT = this.myTgt || (mySt && mySt.tgt);
+      // خط التصويب تبعي، وأسهم الناس اللي عم يستهدفوني
+      if (where[A.me] && myT && where[myT] && g.alive.includes(A.me)) { const [x0, y0] = where[A.me], [x1, y1] = where[myT]; c.save(); c.strokeStyle = css().acc; c.lineWidth = 3; c.setLineDash([8, 7]); c.globalAlpha = 0.7; c.beginPath(); c.moveTo(x0, y0 - s * 2); c.lineTo(x1, y1 - s * 2); c.stroke(); c.restore(); }
+      const onMe = g.alive.filter((id) => id !== A.me && g.st[id] && g.st[id].tgt === A.me);
+      const order = ring.slice().sort((a, b) => where[a][1] - where[b][1]);
       for (const id of order) {
         const st = g.st[id]; const [x, y] = where[id]; const dead = !g.alive.includes(id);
-        const ch = D.char(c, x, y - s * 0.6, s, P(id), { pose: dead ? 'fall' : st.hide ? 'duck' : st.next - now > 700 ? 'throw' : 'idle', k: 1, flip: x <= cx ? 1 : -1, me: isMe(id), label: false, seed: id.charCodeAt(0), alpha: dead ? 0.5 : 1 });
+        if (id === myT && !dead && !isMe(id)) { c.save(); c.strokeStyle = css().acc; c.lineWidth = 3; const rr = s * 1.9, yy = y - s * 2.2; c.beginPath(); c.arc(x, yy, rr, 0, 7); c.moveTo(x - rr - 6, yy); c.lineTo(x - rr + 8, yy); c.moveTo(x + rr - 8, yy); c.lineTo(x + rr + 6, yy); c.moveTo(x, yy - rr - 6); c.lineTo(x, yy - rr + 8); c.stroke(); c.restore(); }
+        const ch = D.char(c, x, y - s * 0.6, s, P(id), { pose: dead ? 'fall' : st.hide ? 'duck' : st.next - now > 600 ? 'throw' : 'idle', k: 1, flip: x <= cx ? 1 : -1, me: isMe(id), label: false, seed: id.charCodeAt(0), alpha: dead ? 0.5 : 1 });
         sofa(c, x, y, s * 0.85, P(id).color);
         if (!dead) D.hearts(c, x, ch.top[1] - s * 0.5, st.hp, 2, Math.max(7, s * 0.45));
-        D.txt(c, P(id).name.slice(0, 9), x, y + s * 0.75, Math.max(9, s * 0.55), { f: 'Plex', w: 700 });
+        D.txt(c, P(id).name.slice(0, 9), x, y + s * 0.75, Math.max(10, s * 0.55), { f: 'Changa', w: 700 });
+        if (onMe.includes(id)) D.txt(c, '🎯', x + s * 1.3, ch.top[1] - s * 0.2, Math.max(10, s * 0.7), { f: 'Changa' });
         if (now - st.hitAt < 600) D.sticker(c, 'طاخ!', x, ch.top[1] - s * 1.4, Math.max(9, s * 0.55), css().bad, '#fff', -0.1);
       }
       for (const f of g.fly) {
@@ -298,8 +317,12 @@ const GUI = (() => {
         const x = lerp(a[0], b[0], k), y = lerp(a[1] - s * 2.2, b[1] - s * 2, k) - Math.sin(k * Math.PI) * s * 2.5;
         slipperAt(c, x, y, s * 0.6, k * 12);
       }
-      if (!g.go) D.sticker(c, 'استعدّوا…', w / 2, h * 0.14, 24, css().acc2, '#1E1B18', -0.04);
-      else { const left = Math.max(0, g.max - g.t); if (left <= 15) D.sticker(c, `${left} ث`, w / 2, 22, 14, css().bad, '#fff', 0); if (g.alive.length === 2) D.sticker(c, 'آخر اتنين… الشحاطات عم تسرع!', w / 2, h * 0.14, 16, css().acc, '#fff', -0.04); }
+      if (!g.go) D.sticker(c, 'دقّ على اللي بدك تشلّفه!', w / 2, h * 0.12, 20, css().acc2, '#1E1B18', -0.04);
+      else {
+        const left = Math.max(0, g.max - g.t); if (left <= 15) D.sticker(c, `${left} ث`, w / 2, 22, 14, css().bad, '#fff', 0);
+        if (g.duo) D.sticker(c, 'آخر اتنين… الشحاطات طايرة!', w / 2, h * 0.12, 17, css().acc, '#fff', -0.04);
+        else if (onMe.length && g.alive.includes(A.me)) D.sticker(c, onMe.length === 1 ? `${P(onMe[0]).name.slice(0, 10)} عم يشلّف عليك!` : `${onMe.length} عم يشلّفوا عليك!`, w / 2, h * 0.12, 15, css().bad, '#fff', -0.03);
+      }
     },
   };
 
@@ -371,7 +394,7 @@ const GUI = (() => {
           const ex = cx0 + Math.cos(p.ang) * len, ey = cy0 + Math.sin(p.ang) * len; c.fillStyle = c.strokeStyle; c.beginPath(); c.moveTo(ex + Math.cos(p.ang) * 9, ey + Math.sin(p.ang) * 9); c.lineTo(ex + Math.cos(p.ang + 2.3) * 10, ey + Math.sin(p.ang + 2.3) * 10); c.lineTo(ex + Math.cos(p.ang - 2.3) * 10, ey + Math.sin(p.ang - 2.3) * 10); c.fill(); c.restore();
         }
         D.char(c, x, y + k * s * 3, s * (1 - k * 0.5), P(id), { pose: fall ? 'fall' : now - (p.dash || 0) < 400 ? 'run' : p.charge ? 'hold' : 'idle', flip: Math.cos(p.ang) >= 0 ? 1 : -1, me: isMe(id), label: isMe(id), seed: id.charCodeAt(1), alpha: 1 - k * 0.8 });
-        if (now - (p.bump || 0) < 250) D.txt(c, '💥', x, y - s * 2, s * 1.4, { f: 'Plex' });
+        if (now - (p.bump || 0) < 250) D.txt(c, '💥', x, y - s * 2, s * 1.4, { f: 'Changa' });
       }
       if (!g.go) D.sticker(c, 'استعدّوا…', w / 2, h / 2, 30, css().acc2, '#1E1B18', -0.04);
       else if (g.nextShrink) { const left = Math.max(0, (g.nextShrink - now) / 1000); D.sticker(c, left <= 3 ? 'الحلبة عم تصغر!' : `الحلبة بتصغر بعد ${Math.ceil(left)}`, w / 2, 22, 14, left <= 3 ? css().bad : css().paper, left <= 3 ? '#fff' : css().ink, 0); }
@@ -379,16 +402,10 @@ const GUI = (() => {
   };
 
   // 8) تخليص
+  const PHONE = (o) => Object.assign({ id: '__phone', name: 'الموبايل', color: '#2D2A32', stool: true }, o || {});
   function catcher(c, x, y, s, stun) {
-    const fake = { id: '__c', name: 'المسّاك', color: '#2D2A32' };
-    const ch = D.char(c, x, y, s, fake, { pose: stun ? 'sad' : 'run', flip: 1, seed: 7 });
-    const [hx, hy] = ch.head; const r = s * 0.95;
-    c.save(); c.beginPath(); c.arc(hx, hy, r, 0, 7); c.fillStyle = '#2D2A32'; c.fill(); c.strokeStyle = css().line; c.lineWidth = 2; c.stroke();
-    c.fillStyle = css().bad; c.fillRect(hx - r, hy - r * 0.35, r * 2, r * 0.5);
-    c.fillStyle = '#fff'; c.beginPath(); c.arc(hx - r * 0.35, hy - r * 0.1, r * 0.2, 0, 7); c.arc(hx + r * 0.35, hy - r * 0.1, r * 0.2, 0, 7); c.fill();
-    c.fillStyle = '#111'; c.beginPath(); c.arc(hx - r * 0.3, hy - r * 0.08, r * 0.09, 0, 7); c.arc(hx + r * 0.4, hy - r * 0.08, r * 0.09, 0, 7); c.fill();
-    if (stun) D.txt(c, '💫', hx, hy - r * 1.4, s, { f: 'Plex' });
-    c.restore();
+    const ch = D.char(c, x, y, s, PHONE({ sad: stun }), { pose: stun ? 'sad' : 'run', flip: 1, seed: 7 });
+    if (stun) D.txt(c, '💫', ch.head[0], ch.head[1] - s * 1.5, s, { f: 'Changa' });
   }
   const tag = {
     controls(el) { el.innerHTML = ''; this.j = joystick(el); note(el, 'اهرب من المسّاك… هو الموبايل، مو حدا منكن'); },
@@ -443,7 +460,7 @@ const GUI = (() => {
           const fr = g.boomAt ? Math.max(0, (g.boomAt - now) / (g.boomAt - g.liveAt)) : 0;
           bomb(c, ch.top[0], ch.top[1] - s * 0.9, s * 0.8, true, false, fr);
         }
-        if (g.from === id && g.holder && g.alive.length > 2) D.txt(c, '🚫💣', x, ch.top[1] - s * 0.5, Math.max(9, s * 0.5), { f: 'Plex' });
+        if (g.from === id && g.holder && g.alive.length > 2) D.txt(c, '🚫💣', x, ch.top[1] - s * 0.5, Math.max(9, s * 0.5), { f: 'Changa' });
         if (g.boom && g.boom.id === id && now - g.boom.at < 1500) bomb(c, x, y - s * 2, s * 1.2, false, true);
       }
       // الفتيل الكبير فوق
@@ -452,7 +469,7 @@ const GUI = (() => {
         const bw = Math.min(w * 0.7, 360), bx = (w - bw) / 2, by = 14;
         c.fillStyle = 'rgba(0,0,0,.15)'; D.rr(c, bx, by, bw, 10, 5); c.fill();
         c.fillStyle = fr < 0.25 ? css().bad : '#8B6B4A'; D.rr(c, bx, by, bw * fr, 10, 5); c.fill();
-        D.txt(c, '🔥', bx + bw * fr, by + 4, 16, { f: 'Plex' }); D.txt(c, '💣', bx - 12, by + 4, 18, { f: 'Plex' });
+        D.txt(c, '🔥', bx + bw * fr, by + 4, 16, { f: 'Changa' }); D.txt(c, '💣', bx - 12, by + 4, 18, { f: 'Changa' });
       }
       if (g.phase === 'wait') D.sticker(c, 'القنبلة جاية…', w / 2, h * 0.14, 22, css().acc2, '#1E1B18', -0.04);
     },
@@ -500,12 +517,10 @@ const GUI = (() => {
         });
       }
       // الموبايل: واقف عدرجة (وأحياناً غير اللي بيقولها)
-      const leader = { id: '__l', name: ' ', color: '#2D2A32' };
+      const leader = PHONE();
       const lb = cl ? cl.body : 3; const lx = x0 + (lb - 0.5) * sw, ly = Math.min(top(lb) - s * 4.2, h * 0.42);
       const s0 = Math.min(26, h / 18);
-      const lch = D.char(c, lx, h * 0.34, s0, leader, { pose: 'cheer', seed: 3 });
-      c.fillStyle = '#2D2A32'; c.beginPath(); c.arc(lch.head[0], lch.head[1], s0 * 0.95, 0, 7); c.fill();
-      D.txt(c, '📱', lch.head[0], lch.head[1], s0 * 1.1, { f: 'Plex' });
+      D.char(c, lx, h * 0.34, s0, leader, { pose: 'cheer', seed: 3 });
       c.save(); c.strokeStyle = css().muted; c.setLineDash([5, 5]); c.lineWidth = 2; c.beginPath(); c.moveTo(lx, h * 0.34 + 4); c.lineTo(lx, ly); c.stroke(); c.restore();
       if (cl && now >= cl.at && (live || now - cl.at < 1200)) D.sticker(c, `الدرجة ${cl.target}!`, w / 2, h * 0.1, Math.min(30, h / 16), css().acc, '#fff', -0.05);
       if (live) { const k = Math.max(0, 1 - (now - cl.at) / cl.win); c.fillStyle = 'rgba(0,0,0,.12)'; c.fillRect(w * 0.2, h * 0.17, w * 0.6, 6); c.fillStyle = css().acc2; c.fillRect(w * 0.2, h * 0.17, w * 0.6 * k, 6); }
@@ -513,75 +528,81 @@ const GUI = (() => {
     },
   };
 
-  // 11) الهوكي
-  const HH = 1.6;
-  const hockey = {
+  // 11) كراسي — الكراسي قلاطق قعدة بالنص، والموبايل (الدي جي) بالنص
+  function stoolSeat(c, x, y, s, taken) {
+    c.save(); c.translate(x, y); const ink = css().line;
+    c.fillStyle = ink; D.rr(c, -s * 0.95 + 3, -s * 0.2 + 3, s * 1.9, s * 0.55, s * 0.2); c.fill();
+    c.strokeStyle = ink; c.lineWidth = Math.max(2, s * 0.12); c.lineCap = 'round';
+    c.beginPath(); c.moveTo(-s * 0.7, s * 0.3); c.lineTo(-s * 0.85, s * 1.15); c.moveTo(s * 0.7, s * 0.3); c.lineTo(s * 0.85, s * 1.15); c.stroke();
+    c.fillStyle = '#C9962E'; D.rr(c, -s * 0.95, -s * 0.2, s * 1.9, s * 0.55, s * 0.2); c.fill(); c.stroke();
+    c.fillStyle = taken ? '#B5483A' : '#F6F1E7'; D.rr(c, -s * 0.75, -s * 0.62, s * 1.5, s * 0.46, s * 0.2); c.fill(); c.stroke();
+    c.restore();
+  }
+  const chairs = {
     controls(el) {
-      el.innerHTML = '';
-      const pad = document.createElement('div'); pad.className = 'hpad'; pad.innerHTML = '<i></i><span>حرّك إصبعك يمين ويسار</span>'; pad.classList.add('h1');
-      el.appendChild(pad); this.pad = pad; const dot = pad.querySelector('i');
-      let act = false, last = 0;
-      const setFrom = (e) => {
-        const r = pad.getBoundingClientRect();
-        const x = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)), y = 0.5;
-        dot.style.left = x * 100 + '%'; dot.style.top = '50%';
-        const t = performance.now(); this.localX = x; if (t - last < 25) return; last = t;
-        this.localX = x; this.localAt = performance.now();
-        A.send({ a: 'pad', x: Math.round(x * 1000) / 1000, y: Math.round(y * 1000) / 1000 });
-      };
-      pad.addEventListener('pointerdown', (e) => { e.preventDefault(); act = true; try { pad.setPointerCapture(e.pointerId); } catch (x) {} SFX.unlock(); setFrom(e); });
-      pad.addEventListener('pointermove', (e) => { if (act) setFrom(e); });
-      pad.addEventListener('pointerup', () => (act = false)); pad.addEventListener('pointercancel', () => (act = false));
-      this.lastGoal = 0;
+      el.innerHTML = ''; this.info = note(el, 'بس توقف الموسيقى اكبس!');
+      this.b = btn(el, 'اقعد! 🪑', 'بس توقف الموسيقى', '', { down: () => this.press() });
+      this.keys = (e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); this.press(); } };
+      window.addEventListener('keydown', this.keys); this.sent = '';
+    },
+    cleanup() { window.removeEventListener('keydown', this.keys); },
+    press() {
+      const g = this.g; if (!g) return; const key = g.round + ':' + g.phase;
+      if (this.sent === g.round + ':sit' || this.sent === g.round + ':walk') return;
+      this.sent = key; vib(20); SFX.click();
+      A.send({ a: 'sit', rt: g.phase === 'sit' ? Math.round(performance.now() - (this.stopSeen || performance.now())) : 0 });
+      this.myPress = { at: performance.now(), early: g.phase === 'walk' };
     },
     update(g) {
-      const m = g.matches && g.matches.find((x) => x.ps.includes(A.me)); if (!m || !this.pad) return;
-      const waiting = m.wait && m.wait.includes(A.me);
-      this.pad.classList.toggle('off', !!waiting || !m.active.includes(A.me));
-      this.pad.querySelector('span').textContent = waiting ? 'إنت عم تستنى… بتلعب مع الربحان' : 'حرّك إصبعك يمين ويسار';
-      if (m.goal && m.goal.at !== this.lastGoal) { this.lastGoal = m.goal.at; SFX.whistle(); }
+      this.g = g;
+      if (g.phase === 'sit' && this.stopKey !== g.round) { this.stopKey = g.round; this.stopSeen = g._rx || performance.now(); vib([40, 30, 40]); }
+      if (!this.b) return; const mine = this.sent && this.sent.startsWith(g.round + ':');
+      this.b.disabled = g.phase === 'result' || g.phase === 'ready' || !!mine;
+      this.info.textContent = mine ? (this.myPress && this.myPress.early ? 'كبست بكير… تزحلقت! 😬' : 'قعدت! استنى…') : g.phase === 'sit' ? 'اقعد هلّق!!' : 'لفّ… وبس توقف الموسيقى اكبس';
+    },
+    music(g) {
+      if (A.demo) return;
+      // الموسيقى بتشتغل عكل الموبايلات وقت اللفّ، وبتخفت أحياناً لتضحك عليكن
+      if (g.phase === 'walk' && !g.done) {
+        SFX.music(true);
+        for (const d of g.dips || []) { const k = 'dip' + d.at; if (this[k]) continue; this[k] = 1; const delay = (d.at - A.sNow()) / 1000; SFX.duck(Math.max(0, delay), d.len / 1000); }
+      } else SFX.music(false);
     },
     draw(c, w, h, g) {
-      D.hara(c, w, h, {}); const now = A.sNow();
-      for (const r of layout(g.matches, w, h)) {
-        panel(c, r); const m = r.m; if (!m.pk) continue;
-        const pad = r.big ? 14 : 8, top = r.y + (r.big ? 40 : 22);
-        const avH = r.h - (top - r.y) - pad, avW = r.w - pad * 2;
-        const TW = Math.min(avW, avH / HH), TH = TW * HH, tx = r.x + (r.w - TW) / 2, ty = top + (avH - TH) / 2;
-        const flip = m.pair[1] === A.me;                    // كل واحد بيشوف مرماه تحت
-        const T = (x, y) => flip ? [tx + (1 - x) * TW, ty + (HH - y) / HH * TH] : [tx + x * TW, ty + y / HH * TH];
-        // الطاولة
-        c.fillStyle = css().dark ? '#24435a' : '#DDF0F7'; c.strokeStyle = css().line; c.lineWidth = r.big ? 4 : 2.5;
-        D.rr(c, tx, ty, TW, TH, TW * 0.08); c.fill(); c.stroke();
-        c.strokeStyle = css().acc; c.lineWidth = 2; c.beginPath(); c.moveTo(tx, ty + TH / 2); c.lineTo(tx + TW, ty + TH / 2); c.stroke();
-        c.beginPath(); c.arc(tx + TW / 2, ty + TH / 2, TW * 0.15, 0, 7); c.stroke();
-        const gw = 0.42 * TW; c.fillStyle = css().ink;
-        c.fillRect(tx + (TW - gw) / 2, ty - 4, gw, 7); c.fillRect(tx + (TW - gw) / 2, ty + TH - 3, gw, 7);
-        // المضارب = راس كل لاعب
-        const sides = flip ? [m.pair[1], m.pair[0]] : [m.pair[0], m.pair[1]];
-        for (const p of m.pair) {
-          const q = m.pd[p]; if (!q) continue;
-          let qx = q[0];
-          // مضربي: بيتحرّك فوراً مع إصبعي بلا ما يستنى السيرفر
-          if (isMe(p) && this.localX != null) { const PRr = 0.08; qx = p === m.pair[0] ? PRr + this.localX * (1 - 2 * PRr) : 1 - (PRr + this.localX * (1 - 2 * PRr)); }
-          const sp = isMe(p) ? [qx, q[1]] : smooth('hk' + p, qx, q[1], 0.45); const [x, y] = T(sp[0], sp[1]);
-          D.head(c, x, y, 0.08 * TW, P(p), { me: isMe(p) });
-        }
-        // الطابة: منكمّل حركتها حسب سرعتها لحد ما يوصل التحديث الجاي (بلا تقطيش)
-        let ex = m.pk[0], ey = m.pk[1];
-        if (m.pv && !m.frozen && g._rx) { const dt = Math.min(0.12, (performance.now() - g._rx) / 1000); ex += m.pv[0] * dt; ey += m.pv[1] * dt; const KRr = 0.042; if (ex < KRr) ex = 2 * KRr - ex; if (ex > 1 - KRr) ex = 2 * (1 - KRr) - ex; }
-        const kp = smooth('hkp' + m.id + m.pair.join(''), ex, ey, 0.55); const [px, py] = T(kp[0], kp[1]);
-        c.fillStyle = '#1E1B18'; c.beginPath(); c.arc(px, py, 0.042 * TW, 0, 7); c.fill(); c.strokeStyle = css().acc2; c.lineWidth = 2; c.stroke();
-        // النتيجة
-        const fs = r.big ? 15 : 10;
-        // الأسماء والنتيجة عالجنب، بعيد عن المرمى
-        sides.forEach((p, k) => { if (!p) return; const yy = k ? ty + TH * 0.3 : ty + TH * 0.7; c.save(); c.translate(tx + TW - 4, yy); c.rotate(-Math.PI / 2); D.sticker(c, `${P(p).name.slice(0, 8)} ${m.sc[p] || 0}`, 0, -fs * 0.6, fs, P(p).color, '#fff', 0); c.restore(); });
-        if (m.wait && m.wait.length) D.txt(c, '⏳ ' + P(m.wait[0]).name.slice(0, 8) + ' بيستنى', r.x + r.w / 2, r.y + (r.big ? 22 : 12), r.big ? 13 : 9, { f: 'Plex', w: 700 });
-        if (m.goal && now - m.goal.at < 1300) D.sticker(c, 'جووول!', tx + TW / 2, ty + TH / 2, r.big ? 30 : 16, css().acc, '#fff', -0.08);
-        else if (m.sudden && !m.done) D.sticker(c, 'الجول الجاي بيربح', tx + TW / 2, ty + TH / 2, r.big ? 15 : 9, css().bad, '#fff', 0);
-        matchTimer(c, r, m, g); doneMark(c, r, m);
-      }
-      bracketHeader(c, w, g);
+      this.g = g; this.music(g);
+      D.hara(c, w, h, {}); const now = A.sNow(), t = performance.now() / 1000;
+      const ids = (g.order || g.alive).filter((id) => g.alive.includes(id) || (g.flash && now - g.flash.at < 1500 && g.flash.ids.includes(id)));
+      const n = Math.max(2, ids.length), cx = w / 2, cy = h * 0.55;
+      const R1 = Math.min(w * 0.22, h * 0.2), R2 = Math.min(w * 0.42, h * 0.38);
+      const s = Math.max(8, Math.min(22, (2 * Math.PI * R2) / (n * 3.6)));
+      // الزاوية: منكمّل حركتها محلياً بين التحديثات
+      if (g.phase === 'walk' || g.phase === 'ready') { if (this.angRx !== g._rx) { this.angRx = g._rx; this.ang0 = g.ang; } this.ang = this.ang0 + ((performance.now() - (g._rx || performance.now())) / 1000) * 0.55; }
+      const ang = this.ang != null ? this.ang : g.ang;
+      const nCh = g.chairs; const seatPos = [];
+      for (let i = 0; i < nCh; i++) { const a = -Math.PI / 2 + (i / nCh) * Math.PI * 2; seatPos.push([cx + Math.cos(a) * R1, cy + Math.sin(a) * R1 * 0.75]); }
+      // الدي جي بالنص
+      D.char(c, cx, cy + s * 1.2, s * 0.9, PHONE(), { pose: g.phase === 'walk' ? 'dance' : 'idle', k: Math.sin(t * 6), seed: 9 });
+      if (g.phase === 'walk') { for (let k = 0; k < 3; k++) { const ph = (t * 0.8 + k / 3) % 1; c.globalAlpha = 1 - ph; D.txt(c, k % 2 ? '♫' : '♪', cx + (k - 1) * s * 1.4, cy - s * 2.4 - ph * s * 2, s * 0.9, { f: 'Changa', color: css().ink }); } c.globalAlpha = 1; }
+      const seatsDrawn = []; for (let i = 0; i < nCh; i++) seatsDrawn.push(seatPos[i]);
+      const seated = g.seats || {};
+      seatsDrawn.sort((a, b) => a[1] - b[1]).forEach(([x, y]) => stoolSeat(c, x, y, s * 0.85, false));
+      // اللاعبين
+      const pos = {};
+      ids.forEach((id, i) => {
+        if (seated[id] != null) { const [x, y] = seatPos[seated[id] % nCh]; pos[id] = [x, y - s * 0.2, 'sit']; return; }
+        const a = ang + (i / n) * Math.PI * 2; pos[id] = [cx + Math.cos(a) * R2, cy + Math.sin(a) * R2 * 0.78, 'walk', Math.sin(a) > 0 ? -1 : 1];
+      });
+      ids.slice().sort((a, b) => pos[a][1] - pos[b][1]).forEach((id) => {
+        const [x, y, mode, fl] = pos[id]; const dead = !g.alive.includes(id); const slip = (g.slip || []).includes(id);
+        const lose = g.loser === id;
+        const pose = dead || lose ? 'sad' : slip ? 'fall' : mode === 'sit' ? 'duck' : g.phase === 'walk' || g.phase === 'ready' ? 'run' : (g.pressed || []).includes(id) ? 'duck' : 'idle';
+        const ch = D.char(c, x, y, s, P(id), { pose, flip: fl || 1, me: isMe(id), label: isMe(id) || ids.length <= 8, seed: id.charCodeAt(0), alpha: dead ? 0.5 : 1, t: g.phase === 'walk' ? t : 0 });
+        if (slip && g.phase !== 'walk') D.sticker(c, 'تزحلق!', x, ch.top[1] - s * 0.8, Math.max(9, s * 0.5), css().bad, '#fff', -0.1);
+        if (lose) D.sticker(c, 'بلا كرسي!', x, ch.top[1] - s * 0.8, Math.max(10, s * 0.6), css().bad, '#fff', 0.06);
+      });
+      if (g.phase === 'sit') D.sticker(c, 'وقفت الموسيقى… اقعد!', w / 2, h * 0.1, Math.min(28, w / 16), css().acc, '#fff', -0.05);
+      else if (g.phase === 'ready') D.sticker(c, g.round ? 'شلنا كرسي…' : 'استعدّوا…', w / 2, h * 0.1, 22, css().acc2, '#1E1B18', -0.04);
+      else if (g.phase === 'walk') D.txt(c, `${nCh} ${nCh === 1 ? 'كرسي' : 'كراسي'} · ${g.alive.length} لاعبين`, w / 2, 22, 15, { f: 'Changa', w: 800, color: css().ink });
     },
   };
 
@@ -612,7 +633,7 @@ const GUI = (() => {
         const col = b.mv === 'D' ? css().acc2 : b.mv === 'R' ? css().acc : css().acc3;
         const k = Math.max(0, 1 - (now - b.at) / b.win);
         c.fillStyle = col; D.rr(c, cx - S0 / 2 + 6, cy - S0 / 2 + 6, S0 - 12, S0 - 12, 14); c.fill();
-        D.txt(c, MV[b.mv].ar, cx, cy, S0 * 0.55, { f: 'Plex', color: b.mv === 'D' ? '#1E1B18' : '#fff' });
+        D.txt(c, MV[b.mv].ar, cx, cy, S0 * 0.55, { f: 'Changa', color: b.mv === 'D' ? '#1E1B18' : '#fff' });
         D.txt(c, MV[b.mv].t, cx, cy + S0 * 0.36, Math.min(22, S0 * 0.13), { f: 'Changa', color: b.mv === 'D' ? '#1E1B18' : '#fff' });
         c.fillStyle = 'rgba(0,0,0,.15)'; c.fillRect(cx - S0 / 2, cy + S0 / 2 + 8, S0, 6); c.fillStyle = css().ink; c.fillRect(cx - S0 / 2, cy + S0 / 2 + 8, S0 * k, 6);
       } else if (g.t0 > now) D.txt(c, String(Math.ceil((g.t0 - now) / 1000)), cx, cy, S0 * 0.5, { color: css().ink });
@@ -623,41 +644,73 @@ const GUI = (() => {
       const n = ids.length; const s = Math.max(7, Math.min(22, (w * 0.9) / (n * 2.6)));
       const ph = b ? Math.max(0, 1 - (now - b.at) / 300) : 0; const kk = b && b.mv === 'R' ? ph : b && b.mv === 'L' ? -ph : 0;
       const y = h * 0.92;
+      // اللويّح هو الموبايل: أول الصف وبإيدو المحرمة
+      const lx = w / 2 - ((n - 1) / 2) * s * 2.5 - s * 3.2;
+      const lch = D.char(c, Math.max(s * 1.6, lx), y, s * 1.1, PHONE(), { pose: 'dance', k: b && b.mv === 'D' ? ph : kk, lean: kk * 0.15, seed: 5 });
+      { const [hx, hy] = lch.hands[0] || lch.head; const tt = performance.now() / 160; c.save(); c.translate(hx, hy); c.rotate(Math.sin(tt) * 0.6); c.fillStyle = css().acc; c.strokeStyle = css().line; c.lineWidth = 2; c.beginPath(); c.moveTo(0, 0); c.quadraticCurveTo(s * 0.8, -s * 1.2, s * 1.6, -s * 0.6); c.quadraticCurveTo(s * 0.9, -s * 0.2, 0, 0); c.fill(); c.stroke(); c.restore(); }
       ids.forEach((id, i) => {
-        const x = w / 2 + (i - (n - 1) / 2) * s * 2.5; const dead = !g.alive.includes(id);
+        const x = w / 2 + (i - (n - 1) / 2) * s * 2.5 + s * 1.2; const dead = !g.alive.includes(id);
         const ch = D.char(c, x, dead ? y + s : y, s, P(id), { pose: dead ? 'fall' : 'dance', k: b && b.mv === 'D' ? (i % 2 ? ph : -ph) : kk, lean: kk * 0.15, me: isMe(id), label: n <= 8 || isMe(id), seed: i, alpha: dead ? 0.5 : 1 });
         if (!dead && g.errs) { D.hearts(c, x, ch.top[1] - s * 0.5, 3 - (g.errs[id] || 0), 3, Math.max(6, s * 0.42)); if (g.lastErr && now - (g.lastErr[id] || 0) < 700) D.sticker(c, 'غلط!', x, ch.top[1] - s * 1.4, Math.max(9, s * 0.5), css().bad, '#fff', 0); }
       });
     },
   };
 
-  const UI = { tug, rps, pillow, blow, slipper, island, push, tag, bomb: bombUI, highlow, hockey, dabke };
-  const BRACKET = ['tug', 'rps', 'blow', 'hockey'];
+  const UI = { tug, rps, pillow, blow, slipper, island, push, tag, bomb: bombUI, highlow, chairs, dabke };
+  const BRACKET = ['tug', 'rps', 'blow'];
   return { UI, BRACKET, init(api) { A = api; }, reset() { for (const k in sm) delete sm[k]; } };
 })();
 
 // ───── المايك والمعايرة (للنفخ) ─────
 const MIC = (() => {
-  let stream = null, an = null, buf = null, fbuf = null, floor = 0.01, peak = 0.25, ok = false, bad = false;
-  try { const c = JSON.parse(localStorage.getItem('akw-mic') || 'null'); if (c) { floor = c.floor; peak = c.peak; } } catch (e) {}
+  // كشف النفخ بالديسيبل: أرضية الهدوء بتتعلّم لحالها، وسقف النفخ من المعايرة وبيكبر إذا نفخت أقوى
+  let stream = null, an = null, buf = null, fbuf = null, ok = false, bad = false;
+  let floorDb = -60, peakDb = -30, calibrated = false;
+  try { const c = JSON.parse(localStorage.getItem('akw-mic2') || 'null'); if (c) { floorDb = c.f; peakDb = c.p; calibrated = true; } } catch (e) {}
   async function start() {
-    if (ok) return true;
+    if (ok) { try { if (SFX.ac.state !== 'running') await SFX.ac.resume(); } catch (e) {} return true; }
     try {
+      const ac = SFX.ac; const resumeP = ac.state !== 'running' ? ac.resume().catch(() => {}) : null;   // لازم تنطلب مع الكبسة نفسها (آيفون)
       stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
-      const ac = SFX.ac; if (ac.state === 'suspended') { try { await ac.resume(); } catch (e) {} } const src = ac.createMediaStreamSource(stream); an = ac.createAnalyser(); an.fftSize = 1024; an.smoothingTimeConstant = 0.3; buf = new Float32Array(an.fftSize); fbuf = new Uint8Array(an.frequencyBinCount); src.connect(an); ok = true; return true;
+      if (resumeP) await resumeP; if (ac.state !== 'running') { try { await ac.resume(); } catch (e) {} }
+      const src = ac.createMediaStreamSource(stream); an = ac.createAnalyser(); an.fftSize = 1024; an.smoothingTimeConstant = 0.2; buf = new Float32Array(an.fftSize); fbuf = new Uint8Array(an.frequencyBinCount); src.connect(an);
+      ok = true; bad = false; return true;
     } catch (e) { ok = false; return false; }
   }
-  // النفخ = ضجة عالترددات الواطية. منقيس الطاقة الكاملة وطاقة الترددات تحت ~700Hz وبناخد الأعلى
-  function rms() {
-    if (!an) return 0; an.getFloatTimeDomainData(buf); let s = 0; for (let i = 0; i < buf.length; i++) s += buf[i] * buf[i];
-    const t = Math.sqrt(s / buf.length);
-    an.getByteFrequencyData(fbuf); const lim = Math.max(4, Math.floor(fbuf.length * 700 / (SFX.ac.sampleRate / 2))); let f = 0; for (let i = 1; i < lim; i++) f += fbuf[i]; f = f / lim / 255;
-    return Math.max(t, f * 0.5);
+  // النفخ = ضجة قوية عالترددات الواطية
+  function db() {
+    if (!an) return -100; an.getFloatTimeDomainData(buf); let s = 0; for (let i = 0; i < buf.length; i++) s += buf[i] * buf[i];
+    const rms = Math.sqrt(s / buf.length);
+    an.getByteFrequencyData(fbuf); const lim = Math.max(4, Math.floor(fbuf.length * 900 / (SFX.ac.sampleRate / 2))); let f = 0; for (let i = 1; i < lim; i++) f += fbuf[i]; f = f / lim / 255;
+    return 20 * Math.log10(Math.max(1e-5, rms, f * f * 0.6));
   }
-  function level() { const r = rms(); return Math.max(0, Math.min(1, (r - floor * 1.3) / Math.max(0.02, peak - floor * 1.3))); }
-  async function measure(ms) { const vals = []; const t0 = performance.now(); while (performance.now() - t0 < ms) { vals.push(rms()); await new Promise((r) => setTimeout(r, 40)); } vals.sort((a, b) => a - b); return vals; }
-  async function calibQuiet() { const v = await measure(1800); floor = v[Math.floor(v.length * 0.9)] || 0.01; save(); }
-  async function calibBlow() { const v = await measure(2200); const p = v[Math.floor(v.length * 0.8)] || 0; bad = p < floor * 2 || p < 0.012; peak = Math.max(floor * 2.5, p); save(); return !bad; }
-  function save() { try { localStorage.setItem('akw-mic', JSON.stringify({ floor, peak })); } catch (e) {} }
-  return { start, level, rms, calibQuiet, calibBlow, get ok() { return ok; }, get bad() { return bad; } };
+  let lastT = 0, cur = -100;
+  function level() {
+    const d = db(); cur = d; const t = performance.now(), dt = Math.min(0.1, (t - (lastT || t)) / 1000); lastT = t;
+    // الأرضية: بتنزل فوراً للهدوء، وبتطلع بشويش (ضجة الغرفة)
+    if (d < floorDb) floorDb = d; else if (d < floorDb + 8) floorDb += 1.5 * dt;
+    if (!calibrated && peakDb < floorDb + 24) peakDb = floorDb + 24;
+    if (d > peakDb) peakDb = d;                         // نفخة أقوى من المعايرة = بيكبر السقف
+    else peakDb = Math.max(floorDb + 18, peakDb - 0.4 * dt);
+    const lo = floorDb + 7, v = (d - lo) / Math.max(8, peakDb - lo - 2);
+    return Math.max(0, Math.min(1, v));
+  }
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  // معايرة بخطوتين: هدوء ثانية، بعدين نفخ لحد ما يتعبّى الشريط (مو وقت ثابت)
+  async function calibrate(onStep, onProg) {
+    onStep('quiet'); const q = []; const t0 = performance.now(); while (performance.now() - t0 < 1300) { q.push(db()); await wait(30); }
+    q.sort((a, b) => a - b); floorDb = q[Math.floor(q.length * 0.6)] || -60;
+    onStep('blow'); const got = []; let hold = 0; const t1 = performance.now(); let lt = t1;
+    while (performance.now() - t1 < 7000) {
+      const d = db(), t = performance.now(), dt = (t - lt) / 1000; lt = t;
+      if (d > floorDb + 12) { got.push(d); hold += dt; } else hold = Math.max(0, hold - dt * 0.5);
+      onProg(Math.min(1, hold / 1.0), Math.max(0, Math.min(1, (d - floorDb) / 35)));
+      if (hold >= 1.0) break; await wait(30);
+    }
+    if (hold < 1.0) { bad = true; calibrated = false; return false; }
+    got.sort((a, b) => a - b); peakDb = Math.max(floorDb + 14, got[Math.floor(got.length * 0.75)]); bad = false; calibrated = true;
+    try { localStorage.setItem('akw-mic2', JSON.stringify({ f: floorDb, p: peakDb })); } catch (e) {}
+    return true;
+  }
+  return { start, level, calibrate, setBad(v) { bad = v; }, get ok() { return ok; }, get bad() { return bad; } };
 })();

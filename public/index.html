@@ -13,15 +13,29 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9H4z"/><path d="M10 20v-5h4v5"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-fwd" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.6"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></symbol>
+  <symbol id="i-people" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.4"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><path d="M15.5 4.8a3.2 3.2 0 0 1 0 6.3M17.5 14.3c2.3.6 4 2.6 4 5.7"/></symbol>
+  <symbol id="i-install" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 17v3h16v-3"/></symbol>
+</defs></svg>
 <div id="app">
   <header id="top" class="hide">
     <div class="fam" id="famTag"><span class="fam-ch"></span><b>تحدّي ولعب</b></div>
     <div class="top-info" id="topInfo"></div>
     <div class="top-btns">
-      <button class="ib" id="btnTheme" title="فاتح/داكن">🌙</button>
-      <button class="ib" id="btnHelp" title="كيف منلعب؟">؟</button>
-      <button class="ib" id="btnHome" title="القعدة">⌂</button>
-      <button class="ib" id="btnPlayers" title="اللاعبين">👥</button>
+      <button class="ib" id="btnHome" title="البيت: قعدة جديدة" aria-label="البيت"><svg><use href="#i-home"/></svg></button>
+      <button class="ib" id="btnBack" title="رجوع" aria-label="رجوع"><svg><use href="#i-back"/></svg></button>
+      <button class="ib" id="btnFwd" title="قدّام" aria-label="قدّام"><svg><use href="#i-fwd"/></svg></button>
+      <button class="ib" id="btnPlayers" title="الريس واللاعبين" aria-label="الريس واللاعبين"><svg><use href="#i-people"/></svg></button>
+      <button class="ib av" id="btnMe" title="حسابي: اسمي وصورتي" aria-label="حسابي"><svg><use href="#i-user"/></svg></button>
+      <button class="ib" id="btnTheme" title="فاتح/داكن" aria-label="فاتح أو داكن"><svg><use href="#i-moon"/></svg></button>
+      <button class="ib" id="btnHelp" title="التعليمات" aria-label="التعليمات"><svg><use href="#i-help"/></svg></button>
     </div>
   </header>
   <div id="net" class="hide">عم نرجّعك عالقعدة…</div>
@@ -34,11 +48,13 @@
       <div class="cover-icon" id="coverIcon"></div>
       <div class="cover-name">قعدة آخر واحد</div>
       <p class="cover-sub">مين بيضل للآخر؟</p>
+      <p class="cover-info">12 لعبة إقصاء · كل واحد من موبايله · من 2 لـ16 لاعب · كل لعبة دقيقة أو تنتين</p>
       <div class="ticker"><div class="ticker-in" id="ticker"></div></div>
       <div class="cover-btns">
         <button class="btn big pri" id="goCreate">افتح قعدة</button>
         <button class="btn big" id="goJoin">فوت عقعدة</button>
       </div>
+      <button class="btn sm inst-btn" id="coverInstall"><svg><use href="#i-install"/></svg>نزّل التطبيق</button>
       <div class="sig">إعداد م. إياد حلوبي</div>
     </div>
   </section>
@@ -99,6 +115,8 @@
         <h3>إعدادات الريس</h3>
         <div class="row between"><label class="lbl">شو منلعب؟ <small class="muted">(دقّ عاللعبة لتشيلها)</small></label><button class="btn sm" id="gAll">الكل</button></div>
         <div class="gsel" id="gSel"></div>
+        <label class="lbl">حفلة الكشف بالآخر</label>
+        <div class="seg sm" id="revealSeg"><button data-r="one">واحد واحد</button><button data-r="top3">التلاتة الأوائل</button><button data-r="all">الكل سوا</button></div>
         <div class="row wrap"><button class="btn sm" id="editSess">اسم القعدة ونوعها</button><button class="btn sm" id="gpGallery">صورة الشلة</button><button class="btn sm" id="gpSelfie">صورة سيلفي للشلة</button></div>
         <button class="btn big pri wide" id="startBtn">لفّ الدولاب!</button>
         <p class="muted sm center" id="startHint">لازم يكون في لاعبين عالأقل</p>
@@ -120,8 +138,8 @@
   <section class="screen" id="s-intro">
     <div class="card intro">
       <div class="intro-n" id="introN"></div>
-      <div class="intro-ico" id="introIco"></div>
       <h2 id="introName"></h2>
+      <div class="demo-box"><canvas id="demoCv"></canvas><span class="demo-tag">كيف منلعب</span></div>
       <p class="intro-how" id="introHow"></p>
       <div id="introExtra"></div>
       <button class="btn big pri wide" id="readyBtn">جاهز!</button>
@@ -174,7 +192,7 @@
         <div class="story-prev"><canvas id="storyCv" width="1080" height="1920"></canvas></div>
         <div class="row wrap center"><button class="btn pri" id="dlStory">نزّل الصورة</button><button class="btn" id="shareFriends">شارك مع صحابك</button></div>
         <button class="btn sm wide" id="editMe2">✏️ عدّل اسمي وصورتي عالصورة</button>
-        <div class="install hide" id="installBox"><p>نزّل «قعدة آخر واحد» كتطبيق عموبايلك</p><button class="btn sm" id="installBtn">نزّل التطبيق</button></div>
+        <div class="install" id="installBox"><p>خلّي «قعدة آخر واحد» عموبايلك للقعدة الجاية</p><button class="btn sm" id="installBtn">نزّل التطبيق</button></div>
       </div>
       <div class="card host-only">
         <h3>للريس</h3>
@@ -193,10 +211,11 @@
 <!-- نوافذ -->
 <div class="modal hide" id="mHelp"><div class="sheet"><button class="x" data-close>✕</button><div id="helpBody"></div></div></div>
 <div class="modal hide" id="mHome"><div class="sheet"><button class="x" data-close>✕</button><h3>القعدة</h3><div id="homeBody"></div></div></div>
-<div class="modal hide" id="mCrop"><div class="sheet crop-sheet"><h3 id="cropT">قصّ الصورة</h3><div class="crop-box" id="cropBox"><canvas id="cropCv"></canvas></div><input type="range" id="cropZoom" min="1" max="4" step="0.01" value="1"><div class="row wrap center"><button class="btn sm" id="cropRot">⟳ لفّ</button><button class="btn sm" id="cropOri">طول/عرض</button></div><div class="row center"><button class="btn pri" id="cropOk">تمام</button><button class="btn ghost" data-close>إلغاء</button></div></div></div>
+<div class="modal hide" id="mCrop"><div class="sheet crop-sheet"><h3 id="cropT">قصّ الصورة</h3><div class="crop-box" id="cropBox"><canvas id="cropCv"></canvas></div><input type="range" id="cropZoom" min="1" max="4" step="0.01" value="1"><div class="row wrap center"><button class="btn sm" id="cropRot">⟳ لفّ</button><button class="btn sm" id="cropFlip">⇋ اقلب</button><button class="btn sm" id="cropOri">طول/عرض</button></div><div class="row center"><button class="btn pri" id="cropOk">تمام</button><button class="btn ghost" data-close>إلغاء</button></div></div></div>
 <div class="modal hide" id="mCam"><div class="sheet"><video id="camV" playsinline autoplay muted></video><div class="row center"><button class="btn pri" id="camShot">صوّر</button><button class="btn sm" id="camFlip">⇄</button><button class="btn ghost" data-close>إلغاء</button></div></div></div>
 <div class="modal hide" id="mSess"><div class="sheet"><button class="x" data-close>✕</button><h3>اسم القعدة ونوعها</h3><input id="mSessName" class="inp" maxlength="30"><div class="chips" id="mSessType"><button data-t="شلة">شلة</button><button data-t="رفقة">رفقة</button><button data-t="عيلة">عيلة</button><button data-t="custom">غير…</button></div><input id="mSessTypeC" class="inp hide" maxlength="20" placeholder="اكتب نوع القعدة"><button class="btn pri wide" id="mSessOk">احفظ</button></div></div>
 <div class="modal hide" id="mConfirm"><div class="sheet narrow center"><p id="confTxt"></p><div class="row center"><button class="btn pri" id="confYes">إي</button><button class="btn ghost" data-close>لأ</button></div></div></div>
+<div class="modal hide" id="mInstall"><div class="sheet"><button class="x" data-close>✕</button><h3>نزّل «قعدة آخر واحد» كتطبيق</h3><p class="muted sm">بتفتحها بكبسة متل أي تطبيق، وبتشتغل حتى لو النت ضعيف.</p><button class="btn pri wide hide" id="instNative">نزّل هلّق</button><div class="osl" id="osl"></div></div></div>
 <input type="file" id="fileIn" accept="image/*" class="hide">
 <div id="toast"></div>
 
@@ -205,6 +224,8 @@
 <script src="sound.js"></script>
 <script src="draw.js"></script>
 <script src="games-ui.js"></script>
+<script src="logic.js"></script>
+<script src="demo.js"></script>
 <script src="story.js"></script>
 <script src="app.js"></script>
 </body>

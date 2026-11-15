@@ -31,7 +31,40 @@ const SFX = (() => {
       o.connect(g); g.connect(master); o.start(at); o.stop(at + 0.35);
     } else noise(0.09, vol * 0.7, 0, 3200, 1.4, at);
   }
+  // موسيقى الكراسي: لحن حجاز مع دربكة مقسوم، بتشتغل طول ما في حدا عم يطلبها
+  let mus = null;
+  function music(on) {
+    const a = ctx(); if (!a) return;
+    if (on) {
+      if (!mus) {
+        const g = a.createGain(); g.gain.value = 0.0001; g.connect(master); g.gain.exponentialRampToValueAtTime(0.9, a.currentTime + 0.15);
+        mus = { g, next: a.currentTime + 0.05, i: 0, keep: performance.now() };
+        const NOTES = [293.7, 311.1, 370, 392, 440, 466.2, 523.3, 587.3];
+        const MEL = [0, 2, 3, 4, 3, 2, 1, 0, 4, 5, 4, 3, 2, 3, 2, 1, 0, 2, 4, 6, 7, 6, 5, 4, 3, 4, 5, 4, 3, 2, 1, 0];
+        const DRUM = ['dum', 0, 'tak', 0, 0, 'tak', 'dum', 0, 'tak', 0, 0, 'tak', 'dum', 0, 'tak', 'tak'];
+        const step = 0.15;
+        mus.timer = setInterval(() => {
+          if (!mus) return; if (performance.now() - mus.keep > 450) return music(false);
+          while (mus.next < a.currentTime + 0.25) {
+            const t = mus.next, i = mus.i++;
+            const f = NOTES[MEL[i % MEL.length]];
+            const o = a.createOscillator(), og = a.createGain(); o.type = 'triangle'; o.frequency.setValueAtTime(f, t);
+            og.gain.setValueAtTime(0.0001, t); og.gain.exponentialRampToValueAtTime(0.16, t + 0.01); og.gain.exponentialRampToValueAtTime(0.0001, t + step * 0.95);
+            o.connect(og); og.connect(mus.g); o.start(t); o.stop(t + step);
+            const d = DRUM[i % DRUM.length]; if (d) drumAt(t, d, 0.42);
+            mus.next += step;
+          }
+        }, 40);
+      }
+      mus.keep = performance.now();
+    } else if (mus) {
+      const m = mus; mus = null; clearInterval(m.timer);
+      try { m.g.gain.cancelScheduledValues(a.currentTime); m.g.gain.setValueAtTime(m.g.gain.value || 0.5, a.currentTime); m.g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + 0.06); setTimeout(() => m.g.disconnect(), 300); } catch (e) {}
+    }
+  }
+  function duck(delay, len) { const a = ctx(); if (!a || !mus) return; const g = mus.g.gain, t = a.currentTime + delay; g.setValueAtTime(0.9, t); g.exponentialRampToValueAtTime(0.06, t + 0.08); g.setValueAtTime(0.06, t + len); g.exponentialRampToValueAtTime(0.9, t + len + 0.1); }
   return {
+    music, duck,
     unlock() { ctx(); },
     get ac() { return ctx(); },
     setMuted(v) { muted = v; },

@@ -1,9 +1,8 @@
 // تخزين الملفات الثابتة لتشتغل اللعبة كتطبيق حتى لو النت ضعيف
-const V = 'akw-v9';
+const V = 'akw-v10';
 const FILES = ['/', '/index.html', '/style.css', '/app.js', '/draw.js', '/games-ui.js', '/story.js', '/brand.js', '/sound.js', '/vendor/qrcode.js', '/manifest.json', '/icons/icon-192.png', '/icons/icon-512.png',
-  '/fonts/lalezar-ar.woff2', '/fonts/lalezar-la.woff2', '/fonts/changa-ar-800.woff2', '/fonts/changa-ar-600.woff2', '/fonts/changa-la-800.woff2',
-  '/fonts/plex-ar-400.woff2', '/fonts/plex-ar-600.woff2', '/fonts/plex-ar-700.woff2',
-  '/fonts/plex-la-400.woff2', '/fonts/plex-la-600.woff2', '/fonts/plex-la-700.woff2'];
+  '/logic.js', '/demo.js', '/fonts/lalezar-ar.woff2', '/fonts/lalezar-la.woff2',
+  ...[400, 500, 600, 700, 800].flatMap((w) => ['/fonts/changa-ar-' + w + '.woff2', '/fonts/changa-la-' + w + '.woff2'])];
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(V).then((c) => c.addAll(FILES)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', (e) => { e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== V).map((k) => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', (e) => {

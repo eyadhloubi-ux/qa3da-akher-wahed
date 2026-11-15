@@ -13,7 +13,23 @@ const D = (() => {
 
   function rr(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
 
+  // وجه الموبايل اللي بيلعب ضدكن: قلطق قعدة أبو المخدّتين (من اللوغو) وعليه عيون
+  function stoolFace(c, x, y, r, o = {}) {
+    const k = (2 * r) / 150; c.save(); c.translate(x, y); c.scale(k, k); c.translate(-427, -182);
+    const ink = '#1C1A17', R = (rx, ry, w, h, rad) => rr(c, rx, ry, w, h, rad);
+    const parts = [[379.5, 113, 95.5, 129, 24], [359.5, 169, 28, 77, 12], [467, 169, 28, 77, 12], [361.5, 228, 131.5, 22, 9]];
+    c.fillStyle = ink; parts.forEach((q) => { R(q[0] + 7, q[1] + 7, q[2], q[3], q[4]); c.fill(); });
+    c.fillStyle = '#C9962E'; c.strokeStyle = ink; c.lineWidth = 6; parts.forEach((q) => { R(...q); c.fill(); c.stroke(); });
+    c.lineWidth = 4; [[393, '#B5483A'], [428, '#3E5C76']].forEach(([px, col]) => { c.fillStyle = col; R(px, 117, 34, 34, 10); c.fill(); c.stroke(); });
+    // العيون
+    const blink = o.t != null && (o.t % 3.2) < 0.12;
+    c.fillStyle = '#fff'; c.beginPath(); c.ellipse(408, 186, 11, blink ? 2 : 13, 0, 0, 7); c.ellipse(447, 186, 11, blink ? 2 : 13, 0, 0, 7); c.fill(); c.stroke();
+    if (!blink) { c.fillStyle = ink; const lx = (o.look || 0) * 4; c.beginPath(); c.arc(409 + lx, 189, 5.5, 0, 7); c.arc(448 + lx, 189, 5.5, 0, 7); c.fill(); }
+    c.lineWidth = 5; c.beginPath(); if (o.sad) c.arc(427, 222, 12, Math.PI * 1.15, Math.PI * 1.85); else c.arc(427, 206, 13, Math.PI * 0.15, Math.PI * 0.85); c.stroke();
+    c.restore();
+  }
   function head(c, x, y, r, pl, o = {}) {
+    if (pl && pl.stool) { stoolFace(c, x, y + r * 0.05, r * 1.12, { t: performance.now() / 1000, sad: pl.sad, look: pl.look }); return; }
     c.save();
     c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2);
     c.fillStyle = pl ? pl.color : '#999'; c.fill();
@@ -24,7 +40,7 @@ const D = (() => {
       c.drawImage(im, x - (im.naturalWidth * s) / 2, y - (im.naturalHeight * s) / 2, im.naturalWidth * s, im.naturalHeight * s);
       c.restore();
     } else {
-      c.fillStyle = '#fff'; c.font = `${Math.round(r * 1.05)}px Changa, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.fillStyle = '#fff'; c.font = `800 ${Math.round(r * 1.05)}px Changa, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
       c.fillText(initials(pl && pl.name), x, y + r * 0.12);
     }
     c.lineWidth = Math.max(2, r * 0.16); c.strokeStyle = pl ? pl.color : '#999';
@@ -110,7 +126,7 @@ const D = (() => {
     }
     if (o.label && pl) {
       const fs = Math.max(10, Math.min(15, L * 0.62));
-      c.font = `700 ${fs}px Plex, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.font = `700 ${fs}px Changa, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
       const nm = pl.name.length > 10 ? pl.name.slice(0, 9) + '…' : pl.name;
       const w = c.measureText(nm).width + 10;
       const ly = y + L * 0.55;
@@ -155,7 +171,7 @@ const D = (() => {
 
   function txt(c, s, x, y, size, o = {}) {
     c.save();
-    c.font = `${o.w || ''} ${size}px ${o.f || 'Changa'}, Plex, sans-serif`; c.textAlign = o.a || 'center'; c.textBaseline = 'middle';
+    c.font = `${o.w || 800} ${size}px ${o.f || 'Changa'}, Changa, sans-serif`; c.textAlign = o.a || 'center'; c.textBaseline = 'middle';
     if (o.stroke) { c.lineWidth = o.sw || size * 0.18; c.strokeStyle = o.stroke; c.lineJoin = 'round'; c.strokeText(s, x, y); }
     c.fillStyle = o.color || css.ink; c.fillText(s, x, y);
     c.restore();
@@ -163,7 +179,7 @@ const D = (() => {
 
   function sticker(c, s, x, y, size, bg, fg, rot = 0) {
     c.save(); c.translate(x, y); c.rotate(rot);
-    c.font = `${size}px Changa, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.font = `800 ${size}px Changa, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
     const w = c.measureText(s).width + size * 0.9, h = size * 1.35;
     c.fillStyle = css.line; rr(c, -w / 2 + 3, -h / 2 + 3, w, h, size * 0.35); c.fill();
     c.fillStyle = bg; rr(c, -w / 2, -h / 2, w, h, size * 0.35); c.fill(); c.lineWidth = 2.5; c.strokeStyle = css.line; c.stroke();
@@ -180,5 +196,5 @@ const D = (() => {
     }
   }
 
-  return { readCss, css: () => css, setPhoto, photo, initials, head, char, hara, txt, sticker, rr, hearts };
+  return { readCss, css: () => css, setPhoto, photo, initials, head, stoolFace, char, hara, txt, sticker, rr, hearts };
 })();
