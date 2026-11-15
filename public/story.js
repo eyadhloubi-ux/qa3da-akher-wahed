@@ -56,29 +56,25 @@ const STORY = (() => {
     const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, T.sky1); g.addColorStop(1, T.sky2); c.fillStyle = g; c.fillRect(0, 0, W, h);
     seed = 5;
     if (T.night) {
-      for (let i = 0; i < 60; i++) { c.fillStyle = `rgba(255,248,220,${0.35 + rnd() * 0.6})`; c.beginPath(); c.arc(rnd() * W, rnd() * h * 0.9, 1.5 + rnd() * 2.5, 0, 7); c.fill(); }
+      for (let i = 0; i < 25; i++) { c.fillStyle = `rgba(255,248,220,${0.35 + rnd() * 0.6})`; c.beginPath(); c.arc(rnd() * W, rnd() * h * 0.9, 1.5 + rnd() * 2.5, 0, 7); c.fill(); }
       c.fillStyle = '#F7E7B4'; c.beginPath(); c.arc(170, 300, 58, 0, 7); c.fill(); c.fillStyle = T.sky1; c.beginPath(); c.arc(196, 284, 52, 0, 7); c.fill();
     } else {
       c.fillStyle = 'rgba(255,255,255,.85)';
-      for (const [x, y, s] of [[200, 290, 1], [820, 230, 0.8]]) { c.beginPath(); c.ellipse(x, y, 90 * s, 34 * s, 0, 0, 7); c.ellipse(x + 60 * s, y - 20 * s, 60 * s, 34 * s, 0, 0, 7); c.ellipse(x - 60 * s, y - 6 * s, 50 * s, 26 * s, 0, 0, 7); c.fill(); }
+      for (const [x, y, s] of [[200, 300, 0.9]]) { c.beginPath(); c.ellipse(x, y, 90 * s, 34 * s, 0, 0, 7); c.ellipse(x + 60 * s, y - 20 * s, 60 * s, 34 * s, 0, 0, 7); c.ellipse(x - 60 * s, y - 6 * s, 50 * s, 26 * s, 0, 0, 7); c.fill(); }
     }
   }
   function wall(c, T, y0, y1, o = {}) {
     c.fillStyle = T.wall; c.fillRect(0, y0, W, y1 - y0);
-    seed = o.seed || 9; const bh = 74;
-    for (let y = y0, row = 0; y < y1; y += bh, row++) {
-      let x = row % 2 ? -60 : 0;
-      while (x < W) { const bw = 120 + rnd() * 70; c.fillStyle = rnd() < 0.4 ? T.wall2 : T.wall; c.fillRect(x + 3, y + 3, bw - 6, bh - 6); x += bw; }
-    }
-    c.strokeStyle = T.joint; c.lineWidth = 5;
-    for (let y = y0, row = 0; y < y1; y += bh, row++) { c.beginPath(); c.moveTo(0, y); c.lineTo(W, y); c.stroke(); }
+    c.strokeStyle = T.joint; c.globalAlpha = 0.5; c.lineWidth = 4;
+    for (let y = y0 + 110, row = 0; y < y1; y += 110, row++) { c.beginPath(); c.moveTo(0, y); c.lineTo(W, y); c.stroke(); for (let x = (row % 2) * 120 + 60; x < W; x += 240) { c.beginPath(); c.moveTo(x, y); c.lineTo(x, y + 110); c.stroke(); } }
+    c.globalAlpha = 1;
     if (o.top !== false) { c.fillStyle = INK; c.fillRect(0, y0 - 6, W, 12); }
   }
   function ground(c, T, y0) {
     c.fillStyle = T.ground; c.fillRect(0, y0, W, H - y0);
-    c.strokeStyle = T.tile; c.lineWidth = 3; const ts = 110;
+    c.strokeStyle = T.tile; c.lineWidth = 3; c.globalAlpha = 0.5; const ts = 220;
     for (let y = y0, i = 0; y < H; y += ts * 0.55, i++) { c.beginPath(); c.moveTo(0, y); c.lineTo(W, y); c.stroke(); for (let x = (i % 2) * ts / 2; x < W; x += ts) { c.beginPath(); c.moveTo(x, y); c.lineTo(x, y + ts * 0.55); c.stroke(); } }
-    c.fillStyle = INK; c.fillRect(0, y0 - 5, W, 10);
+    c.globalAlpha = 1; c.fillStyle = INK; c.fillRect(0, y0 - 5, W, 10);
   }
   // حبل زينة (أعلام) وبالليل لمبات
   function bunting(c, T, y, sag = 70, n = 14, x0 = -20, x1 = W + 20) {
@@ -102,13 +98,8 @@ const STORY = (() => {
     c.lineWidth = 4; c.beginPath(); c.moveTo(x + w / 2, y + 6); c.lineTo(x + w / 2, y + h); c.moveTo(x, y + h * 0.55); c.lineTo(x + w, y + h * 0.55); c.stroke();
   }
   // الشريط فوق: كرسي العيلة واسمها يمين، وأيقونة القعدة شمال
-  function header(c, T, onDark) {
-    const col = onDark ? '#F6EBD8' : INK;
-    const ch = BRAND.chairImg(); if (ch.complete && ch.naturalWidth) c.drawImage(ch, W - 60 - 84, 92, 84, 84);
-    txt(c, BRAND.FAM_NAME, W - 60 - 98, 136, 38, col, { a: 'right' });
-    BRAND.drawIcon(c, 60, 88, 96);
-    txt(c, 'قعدة آخر واحد', 60 + 96 + 18, 134, 36, col, { a: 'left', max: 300 });
-  }
+  // الزاوية فوق: أيقونة القعدة بس (فيها اللوغو)
+  function header(c) { BRAND.drawIcon(c, W - 64 - 116, 84, 116); }
   function footer(c, col) { txt(c, '@eyad.hloubi', W / 2, H - 150, 30, col, { font: '600 %px Changa, sans-serif', a: 'center', dir: 'ltr' }); }
 
   // شخصية مرسومة وراسها صورة اللاعب (من draw.js)
@@ -128,8 +119,7 @@ const STORY = (() => {
   // ── 1) المنصّة: حيط الحارة وصورة الشلة معلّقة عليه، يافطة اللقب، والمنصّة عليها شخصيات الأوائل
   function layoutPodium(c, d, T) {
     sky(c, T, 420); wall(c, T, 360, 1150);
-    windowA(c, T, 70, 500, 92, 150); windowA(c, T, W - 162, 500, 92, 150);
-    bunting(c, T, 372, 50, 16);
+    bunting(c, T, 372, 40, 9);
     // صورة الشلة بإطار خشب معلّقة بمسمار
     c.save(); c.translate(W / 2, 600); c.rotate(-0.035);
     c.strokeStyle = INK; c.lineWidth = 4; c.beginPath(); c.moveTo(-160, -186); c.lineTo(0, -236); c.lineTo(160, -186); c.stroke();
@@ -166,7 +156,7 @@ const STORY = (() => {
     // اللوحة تحت
     c.fillStyle = 'rgba(30,27,24,.0)';
     bottomName(c, d, T, 1555, T.night ? '#F6EBD8' : INK);
-    header(c, T, T.night); footer(c, T.night ? '#D9C9B2' : '#5E5145');
+    header(c); footer(c, T.night ? '#D9C9B2' : '#5E5145');
   }
 
   // ── 2) الأفيش: أفيش ملزوق عحيط الحارة متل أفيشات المباريات، صورتك كبيرة واسمك عريض
@@ -185,8 +175,6 @@ const STORY = (() => {
       const g = c.createRadialGradient(W / 2, 120, 20, W / 2, 700, 1100); g.addColorStop(0, 'rgba(255,214,140,.55)'); g.addColorStop(1, 'rgba(255,214,140,0)'); c.fillStyle = g; c.fillRect(0, 0, W, H);
     }
     // بقايا أفيشات قديمة
-    seed = 13; for (const [x, y, w, h, col, r] of [[-40, 300, 260, 340, '#C9D9C2', 0.08], [880, 1180, 260, 380, '#F2C9A0', -0.1], [760, 220, 300, 200, '#E9B9AE', 0.05]]) { c.save(); c.translate(x + w / 2, y + h / 2); c.rotate(r); c.globalAlpha = 0.75; roughRect(c, -w / 2, -h / 2, w, h, 16); c.fillStyle = col; c.fill(); c.restore(); }
-    bunting(c, T, 200, 50, 14);
     // الأفيش
     c.save(); c.translate(W / 2, 870); c.rotate(-0.025);
     const pw = 860, ph = 1180, px = -pw / 2, py = -ph / 2;
@@ -204,10 +192,10 @@ const STORY = (() => {
     c.fillStyle = INK; c.fillRect(px + 60, py + 942, pw - 120, 8);
     txt(c, d.title, 0, py + 1008, 70, '#E2553D', { max: pw - 120 });
     txt(c, ptsLine(d), 0, py + 1090, 36, '#5E5145', { font: '600 %px Changa, sans-serif', max: pw - 120 });
-    tape(c, px + 60, py + 10, 170, -0.5); tape(c, -px - 60, py + 10, 170, 0.5); tape(c, px + 60, -py - 10, 170, 0.5); tape(c, -px - 60, -py - 10, 170, -0.5);
+    tape(c, px + 60, py + 10, 170, -0.5); tape(c, -px - 60, py + 10, 170, 0.5);
     c.restore();
     // نجمة المركز
-    burst(c, 940, 300, 96, '#E8A317', 0.15); txt(c, '#' + d.pos, 940, 306, 80, INK, { dir: 'ltr' });
+    burst(c, 150, 330, 96, '#E8A317', -0.15); txt(c, '#' + d.pos, 150, 336, 80, INK, { dir: 'ltr' });
     // صورة الشلة: أفيش صغير ملزوق فوق الزاوية
     c.save(); c.translate(290, 1560); c.rotate(0.06);
     c.fillStyle = 'rgba(0,0,0,.3)'; c.fillRect(-190 + 12, -140 + 14, 380, 290); c.fillStyle = PAPER; c.fillRect(-190, -140, 380, 290);
@@ -215,13 +203,12 @@ const STORY = (() => {
     if (d.group && d.group.naturalWidth) txt(c, d.sessName || d.sess, 0, 122, 34, INK, { max: 330 }); else txt(c, d.sessType || '', 0, 122, 30, INK, { font: '600 %px Changa, sans-serif', max: 330 });
     tape(c, 0, -142, 140, -0.04);
     c.restore();
-    header(c, T, T.night); footer(c, T.night ? '#F6EBD8' : INK);
+    header(c); footer(c, T.night ? '#F6EBD8' : INK);
   }
 
   // ── 3) لوح الطباشير: صورة الشلة عحبل الغسيل، ولوح النتيجة بخط الطبشورة، وشخصيتك قدّامه
   function layoutBoard(c, d, T) {
     sky(c, T, 560); wall(c, T, 520, 1500, { seed: 17 });
-    door(c, T, W - 190, 1220, 130, 260);
     ground(c, T, 1500);
     // حبل غسيل ومشابك
     c.strokeStyle = INK; c.lineWidth = 5; c.beginPath(); c.moveTo(-10, 240); c.quadraticCurveTo(W / 2, 330, W + 10, 240); c.stroke();
@@ -244,7 +231,6 @@ const STORY = (() => {
     c.fillStyle = INK; rr(c, bx + 12, by + 14, bw, bh, 18); c.fill();
     c.fillStyle = '#9A6A42'; rr(c, bx, by, bw, bh, 18); c.fill(); c.lineWidth = 7; c.strokeStyle = INK; c.stroke();
     c.fillStyle = T.board; c.fillRect(bx + 30, by + 30, bw - 60, bh - 60);
-    c.strokeStyle = 'rgba(255,255,255,.06)'; c.lineWidth = 30; for (let i = 0; i < 4; i++) { c.beginPath(); c.moveTo(bx + 60 + i * 200, by + 60); c.lineTo(bx + 220 + i * 200, by + bh - 70); c.stroke(); }
     txt(c, 'نتيجة القعدة', W / 2, by + 95, 60, T.chalk, { max: 700 });
     c.strokeStyle = T.chalk; c.lineWidth = 4; c.beginPath(); c.moveTo(W / 2 - 200, by + 140); c.quadraticCurveTo(W / 2, by + 152, W / 2 + 200, by + 138); c.stroke();
     const rk = d.rank || []; let rows = rk.slice(0, 5); const mine = rk.find((r) => r.me); if (mine && !rows.includes(mine)) rows = rk.slice(0, 4).concat(mine);
@@ -261,7 +247,7 @@ const STORY = (() => {
     if (mine) dude(c, Object.assign({ seed: 3 }, mine), 165, 1650, 46, mine.pos === 1 ? 'cheer' : 'idle', false);
     txt(c, d.name, W / 2 + 90, 1560, 72, T.night ? '#F6EBD8' : INK, { max: 640 });
     txt(c, `${d.title} · ${ptsLine(d)}`, W / 2 + 90, 1630, 34, T.night ? '#E9DCC6' : '#5E5145', { font: '600 %px Changa, sans-serif', max: 640 });
-    header(c, T, T.night); footer(c, T.night ? '#D9C9B2' : '#5E5145');
+    header(c); footer(c, T.night ? '#D9C9B2' : '#5E5145');
   }
 
   function render(cv, d, layout, theme) {

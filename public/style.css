@@ -321,3 +321,9 @@ h2{font-size:28px}h3{font-size:21px}
 .ib svg{width:17px;height:17px}
 #top .top-btns{gap:3px;flex:none}
 @media (max-width:345px){#top .fam b{font-size:12px}.ib{width:27px;height:27px}}
+
+/* الأزرار فوق مخفية، وبتطلع لحالها لما تطلع لفوق أو تدق عالشريط */
+#top .top-btns{transition:opacity .22s,transform .22s;transform-origin:left center}
+#top:not(.open) .top-btns{opacity:0;transform:translateX(-14px) scale(.92);pointer-events:none;position:absolute;left:10px}
+#top .grip{margin-inline-start:auto;border-style:dashed}
+#top.open .grip{display:none}

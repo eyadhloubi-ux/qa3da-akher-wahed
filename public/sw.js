@@ -1,5 +1,5 @@
 // تخزين الملفات الثابتة لتشتغل اللعبة كتطبيق حتى لو النت ضعيف
-const V = 'akw-v10';
+const V = 'akw-v11';
 const FILES = ['/', '/index.html', '/style.css', '/app.js', '/draw.js', '/games-ui.js', '/story.js', '/brand.js', '/sound.js', '/vendor/qrcode.js', '/manifest.json', '/icons/icon-192.png', '/icons/icon-512.png',
   '/logic.js', '/demo.js', '/fonts/lalezar-ar.woff2', '/fonts/lalezar-la.woff2',
   ...[400, 500, 600, 700, 800].flatMap((w) => ['/fonts/changa-ar-' + w + '.woff2', '/fonts/changa-la-' + w + '.woff2'])];

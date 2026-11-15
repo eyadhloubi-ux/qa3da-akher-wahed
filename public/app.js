@@ -72,6 +72,15 @@
   $$('.modal').forEach((m) => m.addEventListener('click', (e) => { if (e.target === m || e.target.closest('[data-close]')) m.classList.add('hide'); }));
   $$('[data-back]').forEach((b) => (b.onclick = () => { if (S.room && S.me) { S.mode = ''; route(); } else if (NAV.back.length) goBack(); else show('cover'); }));
   $('#btnBack').onclick = goBack; $('#btnFwd').onclick = goFwd;
+  // الأزرار فوق: مخفية، وبتطلع لما تطلع لفوق (سكرول أو سحبة لتحت) أو تدق عالشريط، وبتختفي بعد شوي
+  const TOP = $('#top'); let topT = 0;
+  function topOpen(ms = 4000) { TOP.classList.add('open'); clearTimeout(topT); topT = setTimeout(() => { if (!TOP.matches(':hover')) TOP.classList.remove('open'); else topOpen(2000); }, ms); }
+  $('#btnGrip').onclick = (e) => { e.stopPropagation(); topOpen(); };
+  TOP.addEventListener('click', (e) => { if (!e.target.closest('.top-btns')) topOpen(); else topOpen(3000); });
+  let lastY = window.scrollY; window.addEventListener('scroll', () => { const y = window.scrollY; if (y < lastY - 6 || y < 4) topOpen(); lastY = y; }, { passive: true });
+  window.addEventListener('wheel', (e) => { if (e.deltaY < -8) topOpen(); }, { passive: true });
+  let ty0 = null; window.addEventListener('touchstart', (e) => { ty0 = e.touches[0].clientY; }, { passive: true });
+  window.addEventListener('touchmove', (e) => { if (ty0 != null && e.touches[0].clientY - ty0 > 60 && (ty0 < 150 || (window.scrollY < 4 && !e.target.closest('#controls,.stage,.joy,.crop-box,.demo-box')))) { topOpen(); ty0 = null; } }, { passive: true });
   function avatarHTML(id, cls = 'hd') { const p = P(id) || {}; const im = D.photo(id); return `<i class="${cls}" style="background-color:${p.color || '#999'};${im ? `background-image:url(${im.src})` : ''}">${im ? '' : D.initials(p.name)}</i>`; }
   function confirmBox(text, yes) { $('#confTxt').textContent = text; modal('mConfirm', true); $('#confYes').onclick = () => { modal('mConfirm', false); yes(); }; }
   const esc = (s) => String(s || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
