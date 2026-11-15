@@ -5,6 +5,7 @@ const BRAND = (() => {
   // ألوان عيلة تحدّي ولعب (900 → 100)
   const FAM = { 900: '#612F27', 700: '#8F3C31', 500: '#B5483A', 300: '#D29488', 100: '#EAD3C8' };
   const FAM_NAME = 'تحدّي ولعب';
+  const ICON_BG = '#E2553D'; // لون «آخر واحد» نفسها (أحمر أعلام الحارة)
 
   // ── اللوغو: القلطق الموستارد ومخدّتين، وكلمة قعدة بـLalezar
   const LOGO_INNER = (ink) => `<g transform="translate(8 8)" fill="${INK}"><rect x="379.5" y="113" width="95.5" height="129" rx="24"/><rect x="359.5" y="169" width="28" height="77" rx="12"/><rect x="467.0" y="169" width="28" height="77" rx="12"/><rect x="361.5" y="228" width="131.5" height="22" rx="9"/></g><g fill="${MUSTARD}" stroke="${INK}" stroke-width="5"><rect x="379.5" y="113" width="95.5" height="129" rx="24"/><rect x="359.5" y="169" width="28" height="77" rx="12"/><rect x="467.0" y="169" width="28" height="77" rx="12"/><rect x="361.5" y="228" width="131.5" height="22" rx="9"/></g><text x="460" y="220" direction="rtl" text-anchor="start" font-family="Lalezar" font-size="160" fill="${ink}">قـــعدة</text><rect x="395.5" y="119.5" width="31.5" height="31.5" rx="9.4" fill="${RED}" stroke="${INK}" stroke-width="3"/><circle cx="411.2" cy="135.3" r="2.4" fill="#000" opacity="0.28"/><rect x="429.0" y="119.5" width="31.5" height="31.5" rx="9.4" fill="${BLUE}" stroke="${INK}" stroke-width="3"/><circle cx="444.7" cy="135.3" r="2.4" fill="#000" opacity="0.28"/>`;
@@ -27,7 +28,7 @@ const BRAND = (() => {
 <path d="M58 92l-10-7M142 92l10-7" stroke="${INK}" stroke-width="5" stroke-linecap="round"/>`;
 
   // ── أيقونة التطبيق حسب القاعدة: لون العيلة، ستيكر اللوغو فوق، والرسمة تحته بلا تلامس
-  const iconSVG = (s, round = true) => `<svg width="${s}" height="${s}" viewBox="0 0 200 200" aria-label="قعدة آخر واحد"><rect width="200" height="200" rx="${round ? 46 : 0}" fill="${RED}"/><rect x="21" y="19" width="168" height="72" rx="16" fill="${INK}"/><rect x="16" y="14" width="168" height="72" rx="16" fill="${CREAM}" stroke="${INK}" stroke-width="4"/><g transform="translate(-9.3 -15.4) scale(0.360)">${LOGO_INNER(INK)}</g><g transform="translate(100 146) scale(0.62) translate(-100 -122)">${DRAW}</g></svg>`;
+  const iconSVG = (s, round = true) => `<svg width="${s}" height="${s}" viewBox="0 0 200 200" aria-label="قعدة آخر واحد"><rect width="200" height="200" rx="${round ? 46 : 0}" fill="${ICON_BG}"/><rect x="21" y="19" width="168" height="72" rx="16" fill="${INK}"/><rect x="16" y="14" width="168" height="72" rx="16" fill="${CREAM}" stroke="${INK}" stroke-width="4"/><g transform="translate(-9.3 -15.4) scale(0.360)">${LOGO_INNER(INK)}</g><g transform="translate(100 146) scale(0.62) translate(-100 -122)">${DRAW}</g></svg>`;
 
   // صور للكانفس (بلا نصوص، فما في مشكلة خطوط)
   const imgs = {};
@@ -36,7 +37,7 @@ const BRAND = (() => {
     const im = new Image(); im.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg.startsWith('<svg') ? svg.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"') : svg); imgs[key] = im; return im;
   }
   const chairImg = () => img('chair', chairSVG(200));
-  const iconImg = () => img('icon', `<svg width="200" height="200" viewBox="0 0 200 200"><rect width="200" height="200" rx="46" fill="${RED}"/><rect x="21" y="19" width="168" height="72" rx="16" fill="${INK}"/><rect x="16" y="14" width="168" height="72" rx="16" fill="${CREAM}" stroke="${INK}" stroke-width="4"/><g transform="translate(100 146) scale(0.62) translate(-100 -122)">${DRAW}</g></svg>`);
+  const iconImg = () => img('icon', `<svg width="200" height="200" viewBox="0 0 200 200"><rect width="200" height="200" rx="46" fill="${ICON_BG}"/><rect x="21" y="19" width="168" height="72" rx="16" fill="${INK}"/><rect x="16" y="14" width="168" height="72" rx="16" fill="${CREAM}" stroke="${INK}" stroke-width="4"/><g transform="translate(100 146) scale(0.62) translate(-100 -122)">${DRAW}</g></svg>`);
 
   // اللوغو عالكانفس (الكلمة بخط Lalezar من الصفحة)
   function drawLogo(c, x, y, h, ink = INK) {

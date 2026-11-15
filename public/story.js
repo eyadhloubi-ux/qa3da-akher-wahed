@@ -1,141 +1,275 @@
-// صورة النتيجة (ستوري 1080×1920) — حسب دليل هوية قعدة: عيلة «تحدّي ولعب» بألوانها المخففة، وطابعها فانكي (ميلان، نجمة، شرايط)
-// 3 أشكال: غلاف · بولاريد · ستيكر — وكل شكل فاتح وداكن. فيها: الاسم، الصورة، صورة الشلة، أيقونة القعدة وعيلتها، @eyad.hloubi
+// صورة النتيجة (ستوري 1080×1920) بروح «قعدة آخر واحد»: ساحة الحارة، حبال الزينة، الشخصيات المرسومة براس اللاعب
+// 3 أشكال: المنصّة · الأفيش · لوح الطباشير — وكل شكل نهار (فاتح) وليل (داكن)
+// الثوابت بس: أيقونة القعدة باللوغو، كرسي العيلة واسمها، الاسم والصورة وصورة الشلة، @eyad.hloubi
 'use strict';
 const STORY = (() => {
   const W = 1080, H = 1920;
+  const INK = '#1E1B18', PAPER = '#FFF6E6';
+  const FLAGS = ['#E2553D', '#E8A317', '#2A7DE1', '#2BA36B', '#FFF6E6'];
   const THEMES = {
-    light: { bg: '#EAD3C8', bg2: '#E2C4B7', ink: '#1C1A17', soft: '#6B4A42', title: '#B5483A', fam: '#B5483A', card: '#FFFDF8', band: '#B5483A', star: '#C9962E', ribbon: '#C9962E' },
-    dark: { bg: '#74362D', bg2: '#68302A', ink: '#F6F1E7', soft: '#E7C9BF', title: '#F2B8AA', fam: '#F2B8AA', card: '#F6F1E7', band: '#4E2620', star: '#C9962E', ribbon: '#C9962E' },
+    light: { night: false, sky1: '#8FCBE0', sky2: '#E9F2E4', wall: '#DDBE90', wall2: '#D2AF7E', joint: 'rgba(110,70,30,.22)', ground: '#E9D6B2', tile: 'rgba(110,70,30,.14)', txt: INK, soft: '#5E5145', door: '#8A5A3B', win: '#7FB7C9', board: '#1F3A30', chalk: '#F4F1E6' },
+    dark: { night: true, sky1: '#121733', sky2: '#2C2B52', wall: '#6A5545', wall2: '#5E4B3D', joint: 'rgba(0,0,0,.28)', ground: '#3D3640', tile: 'rgba(0,0,0,.25)', txt: '#F6EBD8', soft: '#D9C9B2', door: '#3E2A20', win: '#F2C66B', board: '#16261F', chalk: '#F4F1E6' },
   };
-  const INK = '#1C1A17';
+  let seed = 1; const rnd = () => ((seed = (seed * 9301 + 49297) % 233280) / 233280);
+
+  // ───── أدوات
   function rr(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
-  function fitFont(c, s, max, size, font) { let fs = size; do { c.font = `${font.replace('%', fs)}`; if (c.measureText(s).width <= max) break; fs -= 3; } while (fs > 20); return fs; }
+  function fit(c, s, max, size, font) { let fs = size; do { c.font = font.replace('%', fs); if (c.measureText(s).width <= max) break; fs -= 2; } while (fs > 18); return fs; }
   function txt(c, s, x, y, size, color, o = {}) {
     const f = o.font || '800 %px Changa, Plex, sans-serif';
-    const fs = fitFont(c, s, o.max || 940, size, f);
-    c.font = f.replace('%', fs); c.textAlign = o.a || 'right'; c.textBaseline = o.b || 'alphabetic'; c.direction = o.dir || 'rtl'; c.fillStyle = color; c.fillText(s, x, y); return fs;
+    const fs = fit(c, s, o.max || 940, size, f);
+    c.font = f.replace('%', fs); c.textAlign = o.a || 'center'; c.textBaseline = o.b || 'middle'; c.direction = o.dir || 'rtl';
+    if (o.stroke) { c.lineJoin = 'round'; c.lineWidth = o.sw || fs * 0.16; c.strokeStyle = o.stroke; c.strokeText(s, x, y); }
+    c.fillStyle = color; c.fillText(s, x, y); return fs;
   }
   function cover(c, im, x, y, w, h) { const s = Math.max(w / im.naturalWidth, h / im.naturalHeight); c.drawImage(im, x + (w - im.naturalWidth * s) / 2, y + (h - im.naturalHeight * s) / 2, im.naturalWidth * s, im.naturalHeight * s); }
   function initials(n) { const p = String(n || '؟').trim().split(/\s+/); return (p[0] || '؟').slice(0, 2); }
-  // صورة الشخص (أو أول حرفين من اسمه على لونه)
-  function face(c, d, x, y, w, h) {
-    if (d.photo && d.photo.naturalWidth) cover(c, d.photo, x, y, w, h);
-    else { c.fillStyle = d.color || '#B5483A'; c.fillRect(x, y, w, h); txt(c, initials(d.name), x + w / 2, y + h / 2 + Math.min(w, h) * 0.04, Math.min(w, h) * 0.42, '#fff', { a: 'center', b: 'middle' }); }
+  function face(c, p, x, y, w, h) {
+    if (p.photo && p.photo.naturalWidth) cover(c, p.photo, x, y, w, h);
+    else { c.fillStyle = p.color || '#E2553D'; c.fillRect(x, y, w, h); txt(c, initials(p.name), x + w / 2, y + h / 2 + Math.min(w, h) * 0.05, Math.min(w, h) * 0.42, '#fff'); }
   }
-  // صورة الشلة (أو وجوه الشلة مصفوفين إذا ما في صورة)
-  function group(c, d, x, y, w, h) {
+  function headCircle(c, p, x, y, r, ring) {
+    c.save(); c.beginPath(); c.arc(x, y, r, 0, 7); c.clip(); face(c, p, x - r, y - r, r * 2, r * 2); c.restore();
+    c.lineWidth = r * 0.14; c.strokeStyle = ring || p.color || INK; c.beginPath(); c.arc(x, y, r - c.lineWidth / 2, 0, 7); c.stroke();
+    c.lineWidth = Math.max(3, r * 0.07); c.strokeStyle = INK; c.beginPath(); c.arc(x, y, r, 0, 7); c.stroke();
+  }
+  // صورة الشلة، وإذا ما في: وجوه الشلة مصفوفين
+  function group(c, d, x, y, w, h, bg) {
     if (d.group && d.group.naturalWidth) { cover(c, d.group, x, y, w, h); return; }
-    c.fillStyle = '#D29488'; c.fillRect(x, y, w, h);
+    c.fillStyle = bg || '#E8A317'; c.fillRect(x, y, w, h);
     const crew = (d.crew || []).slice(0, 12); const n = Math.max(1, crew.length);
-    const cols = Math.min(n, n > 6 ? 6 : n), rows = Math.ceil(n / cols);
-    const r = Math.min(w / (cols * 2.3), h / (rows * 2.3));
+    const cols = n > 8 ? 6 : n > 4 ? 4 : n, rows = Math.ceil(n / cols);
+    const r = Math.min(w / (cols * 2.35), h / (rows * 2.35));
     crew.forEach((m, i) => {
       const row = Math.floor(i / cols), col = i % cols, inRow = Math.min(cols, n - row * cols);
-      const cx = x + w / 2 + (col - (inRow - 1) / 2) * r * 2.2, cy = y + h / 2 + (row - (rows - 1) / 2) * r * 2.2;
-      c.save(); c.beginPath(); c.arc(cx, cy, r, 0, 7); c.clip(); face(c, m, cx - r, cy - r, r * 2, r * 2); c.restore();
-      c.lineWidth = 5; c.strokeStyle = INK; c.beginPath(); c.arc(cx, cy, r, 0, 7); c.stroke();
+      headCircle(c, m, x + w / 2 + (col - (inRow - 1) / 2) * r * 2.25, y + h / 2 + (row - (rows - 1) / 2) * r * 2.25, r);
     });
   }
-  function star(c, x, y, r, label, T, rot = -0.12, fs) {
-    c.save(); c.translate(x, y); c.rotate(rot);
-    const pts = 12; const path = () => { c.beginPath(); for (let i = 0; i < pts * 2; i++) { const a = (i / (pts * 2)) * Math.PI * 2, rr2 = i % 2 ? r * 0.78 : r; c.lineTo(Math.cos(a) * rr2, Math.sin(a) * rr2); } c.closePath(); };
-    c.translate(8, 8); path(); c.fillStyle = INK; c.fill(); c.translate(-8, -8);
-    path(); c.fillStyle = T.star; c.fill(); c.lineWidth = 7; c.strokeStyle = INK; c.stroke();
-    txt(c, label, 0, 4, fs || r * 0.62, INK, { a: 'center', b: 'middle', dir: 'ltr' });
-    c.restore();
+  function ptsLine(d) { const p = Math.round(d.pts * 100) / 100; return `${p} ${p === 1 ? 'نقطة' : 'نقاط'} من ${d.games} ${d.games === 1 || d.games > 10 ? 'لعبة' : 'ألعاب'}`; }
+  function burst(c, x, y, r, fill, rot = 0) {
+    c.save(); c.translate(x, y); c.rotate(rot); const n = 14;
+    const path = () => { c.beginPath(); for (let i = 0; i < n * 2; i++) { const a = (i / (n * 2)) * Math.PI * 2, q = i % 2 ? r * 0.8 : r; c.lineTo(Math.cos(a) * q, Math.sin(a) * q); } c.closePath(); };
+    c.translate(9, 9); path(); c.fillStyle = INK; c.fill(); c.translate(-9, -9); path(); c.fillStyle = fill; c.fill(); c.lineWidth = 7; c.strokeStyle = INK; c.stroke(); c.restore();
   }
-  function shadowBox(c, x, y, w, h, r, fill, off = 16) { c.fillStyle = INK; rr(c, x + off, y + off, w, h, r); c.fill(); c.fillStyle = fill; rr(c, x, y, w, h, r); c.fill(); c.lineWidth = 9; c.strokeStyle = INK; c.stroke(); }
-  function confetti(c, T, seed, n = 14, area) {
-    let s = seed; const rnd = () => ((s = (s * 9301 + 49297) % 233280) / 233280);
-    for (let i = 0; i < n; i++) {
-      const x = (area ? area[0] : 60) + rnd() * (area ? area[2] : 960), y = (area ? area[1] : 180) + rnd() * (area ? area[3] : 1500), z = 14 + rnd() * 18;
-      c.save(); c.translate(x, y); c.rotate(rnd() * 3); c.fillStyle = [T.star, INK, T.title, '#3E5C76'][i % 4]; c.globalAlpha = 0.85; c.fillRect(-z / 2, -z / 2, z, z * 0.6); c.restore();
+  function tape(c, x, y, w, rot, col = 'rgba(232,210,150,.85)') { c.save(); c.translate(x, y); c.rotate(rot); c.fillStyle = col; c.fillRect(-w / 2, -24, w, 48); c.fillStyle = 'rgba(255,255,255,.25)'; c.fillRect(-w / 2, -24, w, 10); c.restore(); }
+
+  // ───── الحارة
+  function sky(c, T, h) {
+    const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, T.sky1); g.addColorStop(1, T.sky2); c.fillStyle = g; c.fillRect(0, 0, W, h);
+    seed = 5;
+    if (T.night) {
+      for (let i = 0; i < 60; i++) { c.fillStyle = `rgba(255,248,220,${0.35 + rnd() * 0.6})`; c.beginPath(); c.arc(rnd() * W, rnd() * h * 0.9, 1.5 + rnd() * 2.5, 0, 7); c.fill(); }
+      c.fillStyle = '#F7E7B4'; c.beginPath(); c.arc(170, 300, 58, 0, 7); c.fill(); c.fillStyle = T.sky1; c.beginPath(); c.arc(196, 284, 52, 0, 7); c.fill();
+    } else {
+      c.fillStyle = 'rgba(255,255,255,.85)';
+      for (const [x, y, s] of [[200, 290, 1], [820, 230, 0.8]]) { c.beginPath(); c.ellipse(x, y, 90 * s, 34 * s, 0, 0, 7); c.ellipse(x + 60 * s, y - 20 * s, 60 * s, 34 * s, 0, 0, 7); c.ellipse(x - 60 * s, y - 6 * s, 50 * s, 26 * s, 0, 0, 7); c.fill(); }
     }
   }
-  function header(c, T) {
-    // يمين: كرسي العيلة واسمها بخطها — شمال: أيقونة القعدة واسمها
-    const ch = BRAND.chairImg(); if (ch.complete && ch.naturalWidth) c.drawImage(ch, W - 60 - 86, 64, 86, 86);
-    txt(c, BRAND.FAM_NAME, W - 60 - 96, 122, 42, T.fam);
-    BRAND.drawIcon(c, 60, 60, 92);
-    txt(c, 'قعدة آخر واحد', 60 + 92 + 18 + 260, 120, 32, T.soft, { font: '700 %px Plex, sans-serif', max: 260 });
+  function wall(c, T, y0, y1, o = {}) {
+    c.fillStyle = T.wall; c.fillRect(0, y0, W, y1 - y0);
+    seed = o.seed || 9; const bh = 74;
+    for (let y = y0, row = 0; y < y1; y += bh, row++) {
+      let x = row % 2 ? -60 : 0;
+      while (x < W) { const bw = 120 + rnd() * 70; c.fillStyle = rnd() < 0.4 ? T.wall2 : T.wall; c.fillRect(x + 3, y + 3, bw - 6, bh - 6); x += bw; }
+    }
+    c.strokeStyle = T.joint; c.lineWidth = 5;
+    for (let y = y0, row = 0; y < y1; y += bh, row++) { c.beginPath(); c.moveTo(0, y); c.lineTo(W, y); c.stroke(); }
+    if (o.top !== false) { c.fillStyle = INK; c.fillRect(0, y0 - 6, W, 12); }
   }
-  function footer(c, T) { txt(c, '@eyad.hloubi', 60, H - 64, 32, T.soft, { font: '700 %px Plex, sans-serif', a: 'left', dir: 'ltr' }); }
-  function ptsLine(d) { const p = Math.round(d.pts * 100) / 100; return `${p} ${p === 1 ? 'نقطة' : 'نقاط'} من ${d.games} ${d.games === 1 || d.games > 10 ? 'لعبة' : 'ألعاب'}`; }
+  function ground(c, T, y0) {
+    c.fillStyle = T.ground; c.fillRect(0, y0, W, H - y0);
+    c.strokeStyle = T.tile; c.lineWidth = 3; const ts = 110;
+    for (let y = y0, i = 0; y < H; y += ts * 0.55, i++) { c.beginPath(); c.moveTo(0, y); c.lineTo(W, y); c.stroke(); for (let x = (i % 2) * ts / 2; x < W; x += ts) { c.beginPath(); c.moveTo(x, y); c.lineTo(x, y + ts * 0.55); c.stroke(); } }
+    c.fillStyle = INK; c.fillRect(0, y0 - 5, W, 10);
+  }
+  // حبل زينة (أعلام) وبالليل لمبات
+  function bunting(c, T, y, sag = 70, n = 14, x0 = -20, x1 = W + 20) {
+    const pt = (t) => [x0 + (x1 - x0) * t, y + Math.sin(t * Math.PI) * sag];
+    c.strokeStyle = INK; c.lineWidth = 4; c.beginPath(); for (let i = 0; i <= 40; i++) { const [x, yy] = pt(i / 40); i ? c.lineTo(x, yy) : c.moveTo(x, yy); } c.stroke();
+    for (let i = 0; i < n; i++) {
+      const t = (i + 0.5) / n, [x, yy] = pt(t);
+      if (T.night && i % 2) {
+        const g = c.createRadialGradient(x, yy + 18, 2, x, yy + 18, 46); g.addColorStop(0, 'rgba(255,214,120,.75)'); g.addColorStop(1, 'rgba(255,214,120,0)'); c.fillStyle = g; c.beginPath(); c.arc(x, yy + 18, 46, 0, 7); c.fill();
+        c.fillStyle = '#FFD878'; c.strokeStyle = INK; c.lineWidth = 3; c.beginPath(); c.ellipse(x, yy + 20, 11, 15, 0, 0, 7); c.fill(); c.stroke();
+      } else {
+        c.fillStyle = FLAGS[i % FLAGS.length]; c.strokeStyle = INK; c.lineWidth = 3.5;
+        c.beginPath(); c.moveTo(x - 24, yy - 2); c.lineTo(x + 24, yy - 2); c.lineTo(x, yy + 48); c.closePath(); c.fill(); c.stroke();
+      }
+    }
+  }
+  function door(c, T, x, y, w, h) { c.fillStyle = T.door; rr(c, x, y, w, h + 20, w / 2); c.fill(); c.lineWidth = 6; c.strokeStyle = INK; c.stroke(); c.strokeStyle = 'rgba(0,0,0,.25)'; c.lineWidth = 4; c.beginPath(); c.moveTo(x + w / 2, y + w / 2); c.lineTo(x + w / 2, y + h); c.stroke(); c.fillStyle = '#E8A317'; c.beginPath(); c.arc(x + w * 0.62, y + h * 0.6, 7, 0, 7); c.fill(); }
+  function windowA(c, T, x, y, w, h) {
+    if (T.night) { const g = c.createRadialGradient(x + w / 2, y + h / 2, 4, x + w / 2, y + h / 2, w * 1.3); g.addColorStop(0, 'rgba(255,210,110,.45)'); g.addColorStop(1, 'rgba(255,210,110,0)'); c.fillStyle = g; c.fillRect(x - w, y - h, w * 3, h * 3); }
+    c.fillStyle = T.win; rr(c, x, y, w, h, w / 2); c.fill(); c.lineWidth = 6; c.strokeStyle = INK; c.stroke();
+    c.lineWidth = 4; c.beginPath(); c.moveTo(x + w / 2, y + 6); c.lineTo(x + w / 2, y + h); c.moveTo(x, y + h * 0.55); c.lineTo(x + w, y + h * 0.55); c.stroke();
+  }
+  // الشريط فوق: كرسي العيلة واسمها يمين، وأيقونة القعدة شمال
+  function header(c, T, onDark) {
+    const col = onDark ? '#F6EBD8' : INK;
+    const ch = BRAND.chairImg(); if (ch.complete && ch.naturalWidth) c.drawImage(ch, W - 56 - 78, 58, 78, 78);
+    txt(c, BRAND.FAM_NAME, W - 56 - 90, 100, 38, col, { a: 'right' });
+    BRAND.drawIcon(c, 56, 52, 88);
+    txt(c, 'قعدة آخر واحد', 56 + 88 + 18, 98, 34, col, { a: 'left', max: 300 });
+  }
+  function footer(c, col) { txt(c, '@eyad.hloubi', 60, H - 60, 30, col, { font: '700 %px Plex, sans-serif', a: 'left', dir: 'ltr' }); }
 
-  // ── 1) غلاف: صورة الشلة فوق، وصورتك مايلة عليها، ونجمة المركز وشريط اللقب
-  function layoutCover(c, d, T) {
-    c.save(); c.beginPath(); c.rect(0, 180, W, 640); c.clip(); group(c, d, 0, 180, W, 640);
-    const g = c.createLinearGradient(0, 520, 0, 820); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, T.bg); c.fillStyle = g; c.fillRect(0, 500, W, 330);
-    c.restore();
-    c.save(); c.translate(600, 860); c.rotate(0.07);
-    shadowBox(c, -230, -270, 460, 540, 26, T.card, 18);
-    c.save(); rr(c, -206, -246, 412, 492, 16); c.clip(); face(c, d, -206, -246, 412, 492); c.restore();
-    c.restore();
-    star(c, 330, 640, 110, '#' + d.pos, T);
-    // الشريط المايل
-    c.save(); c.translate(W / 2, 1270); c.rotate(-0.06);
-    c.fillStyle = INK; c.fillRect(-W * 0.62 + 10, -78 + 10, W * 1.24, 156);
-    c.fillStyle = T.ribbon; c.fillRect(-W * 0.62, -78, W * 1.24, 156); c.lineWidth = 8; c.strokeStyle = INK; c.strokeRect(-W * 0.62, -78, W * 1.24, 156);
-    txt(c, d.title, 0, 8, 88, INK, { a: 'center', b: 'middle', max: 860 });
-    c.restore();
-    txt(c, d.name, W - 70, 1480, 108, T.ink, { max: 900 });
-    txt(c, `${ptsLine(d)} · ${d.sess}`, W - 70, 1550, 36, T.soft, { font: '600 %px Plex, sans-serif', max: 920 });
-    confetti(c, T, 7, 10, [60, 1600, 960, 180]);
+  // شخصية مرسومة وراسها صورة اللاعب (من draw.js)
+  function dude(c, p, x, y, s, pose, me) {
+    if (typeof D === 'undefined') return; const pl = { id: p.id, name: p.name, color: p.color };
+    D.char(c, x, y, s, pl, { pose, t: 0.35 + (p.seed || 0), seed: p.seed || 0 });
+    if (me) { // تاج فوق راس صاحب الستوري
+      const top = y - s * 3.95; c.save(); c.translate(x, top); c.fillStyle = '#E8A317'; c.strokeStyle = INK; c.lineWidth = 5;
+      c.beginPath(); c.moveTo(-s * 0.7, 0); c.lineTo(-s * 0.8, -s * 0.75); c.lineTo(-s * 0.35, -s * 0.35); c.lineTo(0, -s * 0.95); c.lineTo(s * 0.35, -s * 0.35); c.lineTo(s * 0.8, -s * 0.75); c.lineTo(s * 0.7, 0); c.closePath(); c.fill(); c.stroke(); c.restore();
+    }
   }
-  // ── 2) بولاريد: بولاريد الشلة ورا، وبولاريدك قدّام بشريطة لاصقة، واللقب كبير
-  function polaroid(c, im, x, y, w, h, rot, cap, T, fn, capLeft) {
-    c.save(); c.translate(x + w / 2, y + h / 2); c.rotate(rot);
-    c.fillStyle = 'rgba(0,0,0,.25)'; rr(c, -w / 2 + 14, -h / 2 + 18, w, h, 10); c.fill();
-    c.fillStyle = T.card; rr(c, -w / 2, -h / 2, w, h, 10); c.fill(); c.lineWidth = 4; c.strokeStyle = 'rgba(28,26,23,.35)'; c.stroke();
-    const pad = w * 0.06, ph = h - pad - h * 0.2;
-    c.save(); c.beginPath(); c.rect(-w / 2 + pad, -h / 2 + pad, w - pad * 2, ph); c.clip(); fn(-w / 2 + pad, -h / 2 + pad, w - pad * 2, ph); c.restore();
-    if (capLeft) txt(c, cap, -w / 2 + pad, h / 2 - h * 0.08, Math.min(46, w * 0.075), INK, { a: 'left', b: 'middle', max: w * 0.38 });
-    else txt(c, cap, 0, h / 2 - h * 0.08, Math.min(54, w * 0.09), INK, { a: 'center', b: 'middle', max: w - pad * 2 });
-    c.restore();
+  function bottomName(c, d, T, y, col) {
+    txt(c, d.name, W / 2, y, 96, col, { max: 940 });
+    txt(c, `${d.title} · ${ptsLine(d)}`, W / 2, y + 86, 38, col === INK ? T.soft : '#E9DCC6', { font: '700 %px Plex, sans-serif', max: 940 });
   }
-  function layoutPolaroid(c, d, T) {
-    polaroid(c, null, 80, 230, 640, 560, -0.11, d.sessName || d.sess, T, (x, y, w, h) => group(c, d, x, y, w, h), true);
-    polaroid(c, null, 400, 640, 560, 700, 0.06, d.name, T, (x, y, w, h) => face(c, d, x, y, w, h));
-    // شريطة لاصقة
-    c.save(); c.translate(690, 640); c.rotate(0.03); c.fillStyle = 'rgba(201,150,46,.82)'; c.fillRect(-90, -26, 180, 56); c.restore();
-    star(c, 300, 1230, 112, '#' + d.pos, T, 0.1);
-    const words = d.title.split(' ');
-    const l1 = words.length > 1 ? words.slice(0, Math.ceil(words.length / 2)).join(' ') : d.title, l2 = words.length > 1 ? words.slice(Math.ceil(words.length / 2)).join(' ') : '';
-    txt(c, l1, W - 70, l2 ? 1500 : 1560, 130, T.title, { max: 600 });
-    if (l2) txt(c, l2, W - 70, 1630, 130, T.title, { max: 600 });
-    txt(c, ptsLine(d), W - 70, 1720, 38, T.soft, { font: '600 %px Plex, sans-serif', max: 620 });
-    confetti(c, T, 3, 8, [60, 1380, 400, 300]);
+
+  // ── 1) المنصّة: حيط الحارة وصورة الشلة معلّقة عليه، يافطة اللقب، والمنصّة عليها شخصيات الأوائل
+  function layoutPodium(c, d, T) {
+    sky(c, T, 420); wall(c, T, 360, 1230);
+    windowA(c, T, 70, 520, 92, 150); windowA(c, T, W - 162, 520, 92, 150);
+    bunting(c, T, 372, 50, 16);
+    // صورة الشلة بإطار خشب معلّقة بمسمار
+    c.save(); c.translate(W / 2, 668); c.rotate(-0.035);
+    c.strokeStyle = INK; c.lineWidth = 4; c.beginPath(); c.moveTo(-160, -186); c.lineTo(0, -236); c.lineTo(160, -186); c.stroke();
+    c.fillStyle = '#E8A317'; c.beginPath(); c.arc(0, -238, 11, 0, 7); c.fill(); c.lineWidth = 4; c.stroke();
+    c.fillStyle = 'rgba(0,0,0,.28)'; rr(c, -280 + 14, -190 + 16, 560, 380, 12); c.fill();
+    c.fillStyle = '#8A5A3B'; rr(c, -280, -190, 560, 380, 12); c.fill(); c.lineWidth = 6; c.stroke();
+    c.save(); c.beginPath(); c.rect(-252, -162, 504, 324); c.clip(); group(c, d, -252, -162, 504, 324); c.restore();
+    c.lineWidth = 5; c.strokeRect(-252, -162, 504, 324);
+    c.restore();
+    // يافطة اللقب (يافطة محل)
+    c.save(); c.translate(W / 2, 958);
+    c.fillStyle = INK; rr(c, -360 + 10, -66 + 10, 720, 132, 16); c.fill();
+    c.fillStyle = '#1F6B4A'; rr(c, -360, -66, 720, 132, 16); c.fill(); c.lineWidth = 7; c.strokeStyle = INK; c.stroke();
+    c.strokeStyle = '#FFF6E6'; c.lineWidth = 3; rr(c, -342, -50, 684, 100, 10); c.stroke();
+    txt(c, d.title, 0, 4, 78, '#FFF6E6', { max: 620 });
+    c.restore();
+    ground(c, T, 1230);
+    // المنصّة
+    const rk = d.rank || []; const by = (pos) => rk.filter((r) => r.pos === pos);
+    const top = []; for (const r of rk) { if (top.length >= 3) break; top.push(r); }
+    const slots = [{ x: W / 2, h: 230, n: 1, col: '#E8A317' }, { x: W / 2 + 270, h: 160, n: 2, col: '#2A7DE1' }, { x: W / 2 - 270, h: 105, n: 3, col: '#E2553D' }];
+    const baseY = 1590;
+    slots.forEach((s, i) => {
+      c.fillStyle = INK; c.fillRect(s.x - 120 + 10, baseY - s.h + 10, 240, s.h); c.fillStyle = s.col; c.fillRect(s.x - 120, baseY - s.h, 240, s.h); c.lineWidth = 7; c.strokeStyle = INK; c.strokeRect(s.x - 120, baseY - s.h, 240, s.h);
+      txt(c, String(top[i] ? top[i].pos : s.n), s.x, baseY - s.h / 2 + 6, Math.min(110, s.h * 0.7), '#FFF6E6', { stroke: INK, sw: 10 });
+      if (top[i]) dude(c, Object.assign({ seed: i }, top[i]), s.x, baseY - s.h - 8, 64, i === 0 ? 'cheer' : 'idle', top[i].me);
+    });
+    // إذا مو بالتلاتة الأوائل: بيوقف قدّام بلافتة مركزه
+    const mine = rk.find((r) => r.me);
+    if (mine && !top.includes(mine)) {
+      dude(c, Object.assign({ seed: 7 }, mine), W - 72, 1600, 44, 'idle', false);
+      burst(c, W - 80, 1330, 52, '#E8A317', 0.2); txt(c, String(mine.pos), W - 80, 1334, 50, INK);
+    }
+    // اللوحة تحت
+    c.fillStyle = 'rgba(30,27,24,.0)';
+    bottomName(c, d, T, 1720, T.night ? '#F6EBD8' : INK);
+    header(c, T, T.night); footer(c, T.night ? '#D9C9B2' : '#5E5145');
   }
-  // ── 3) ستيكر: صورتك ستيكر كبير مايل، ونجمة الرقم، ولافتة الاسم واللقب
-  function layoutSticker(c, d, T) {
-    confetti(c, T, 11, 16, [50, 200, 980, 1100]);
-    c.save(); c.translate(560, 720); c.rotate(-0.08);
-    shadowBox(c, -330, -330, 660, 660, 80, T.card, 22);
-    c.save(); rr(c, -312, -312, 624, 624, 66); c.clip(); face(c, d, -312, -312, 624, 624); c.restore();
-    c.restore();
-    star(c, 240, 1030, 118, String(d.pos), T, -0.15, 120);
-    // لافتة الاسم واللقب
-    c.save(); c.translate(W / 2 + 30, 1210); c.rotate(-0.045);
-    const label = `${d.name} · ${d.title}`;
-    c.font = '800 64px Changa, Plex, sans-serif'; let lw = Math.min(900, c.measureText(label).width + 90);
-    c.fillStyle = INK; c.fillRect(-lw / 2 + 12, -62 + 12, lw, 124); c.fillStyle = '#FFFDF8'; c.fillRect(-lw / 2, -62, lw, 124); c.lineWidth = 7; c.strokeStyle = INK; c.strokeRect(-lw / 2, -62, lw, 124);
-    txt(c, label, 0, 6, 64, INK, { a: 'center', b: 'middle', max: lw - 70 });
-    c.restore();
-    // كرت الشلة الصغير
-    c.save(); c.translate(330, 1440); c.rotate(0.03);
-    shadowBox(c, -190, -120, 380, 240, 28, '#D29488', 12);
-    c.save(); rr(c, -180, -110, 360, 220, 20); c.clip(); group(c, d, -180, -110, 360, 220); c.restore();
-    c.restore();
-    txt(c, d.sessName || d.sess, W - 70, 1420, 52, T.ink, { max: 480 });
-    txt(c, ptsLine(d), W - 70, 1485, 36, T.soft, { font: '600 %px Plex, sans-serif', max: 480 });
+
+  // ── 2) الأفيش: أفيش ملزوق عحيط الحارة متل أفيشات المباريات، صورتك كبيرة واسمك عريض
+  function roughRect(c, x, y, w, h, amp) {
+    seed = 21; c.beginPath(); const st = 26;
+    for (let i = 0; i <= w; i += st) c.lineTo(x + i, y + (rnd() - 0.5) * amp);
+    for (let i = 0; i <= h; i += st) c.lineTo(x + w + (rnd() - 0.5) * amp, y + i);
+    for (let i = w; i >= 0; i -= st) c.lineTo(x + i, y + h + (rnd() - 0.5) * amp);
+    for (let i = h; i >= 0; i -= st) c.lineTo(x + (rnd() - 0.5) * amp, y + i);
+    c.closePath();
   }
+  function layoutPoster(c, d, T) {
+    wall(c, T, 0, H, { top: false, seed: 4 });
+    if (T.night) { // ضو لمبة الشارع
+      c.fillStyle = 'rgba(10,10,25,.35)'; c.fillRect(0, 0, W, H);
+      const g = c.createRadialGradient(W / 2, 120, 20, W / 2, 700, 1100); g.addColorStop(0, 'rgba(255,214,140,.55)'); g.addColorStop(1, 'rgba(255,214,140,0)'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+    }
+    // بقايا أفيشات قديمة
+    seed = 13; for (const [x, y, w, h, col, r] of [[-40, 300, 260, 340, '#C9D9C2', 0.08], [880, 1180, 260, 380, '#F2C9A0', -0.1], [760, 220, 300, 200, '#E9B9AE', 0.05]]) { c.save(); c.translate(x + w / 2, y + h / 2); c.rotate(r); c.globalAlpha = 0.75; roughRect(c, -w / 2, -h / 2, w, h, 16); c.fillStyle = col; c.fill(); c.restore(); }
+    bunting(c, T, 170, 60, 14);
+    // الأفيش
+    c.save(); c.translate(W / 2, 900); c.rotate(-0.025);
+    const pw = 860, ph = 1260, px = -pw / 2, py = -ph / 2;
+    c.fillStyle = 'rgba(0,0,0,.3)'; roughRect(c, px + 16, py + 20, pw, ph, 14); c.fill();
+    c.fillStyle = PAPER; roughRect(c, px, py, pw, ph, 14); c.fill();
+    // راس الأفيش
+    c.fillStyle = '#E2553D'; c.fillRect(px + 34, py + 36, pw - 68, 150);
+    txt(c, d.pos === 1 ? 'بطل الحارة' : 'من أبطال الحارة', 20, py + 112, 86, PAPER, { max: pw - 220 });
+    // الصورة
+    c.save(); c.beginPath(); c.rect(px + 34, py + 210, pw - 68, 640); c.clip(); face(c, d, px + 34, py + 210, pw - 68, 640);
+    c.fillStyle = 'rgba(226,85,61,.12)'; c.fillRect(px + 34, py + 210, pw - 68, 640); c.restore();
+    c.lineWidth = 6; c.strokeStyle = INK; c.strokeRect(px + 34, py + 210, pw - 68, 640);
+    // الاسم
+    txt(c, d.name, 0, py + 935, 116, INK, { max: pw - 90 });
+    c.fillStyle = INK; c.fillRect(px + 60, py + 1010, pw - 120, 8);
+    txt(c, d.title, 0, py + 1080, 74, '#E2553D', { max: pw - 120 });
+    txt(c, ptsLine(d), 0, py + 1170, 36, '#5E5145', { font: '700 %px Plex, sans-serif', max: pw - 120 });
+    tape(c, px + 60, py + 10, 170, -0.5); tape(c, -px - 60, py + 10, 170, 0.5); tape(c, px + 60, -py - 10, 170, 0.5); tape(c, -px - 60, -py - 10, 170, -0.5);
+    c.restore();
+    // نجمة المركز
+    burst(c, 940, 330, 100, '#E8A317', 0.15); txt(c, '#' + d.pos, 940, 336, 82, INK, { dir: 'ltr' });
+    // صورة الشلة: أفيش صغير ملزوق فوق الزاوية
+    c.save(); c.translate(300, 1690); c.rotate(0.06);
+    c.fillStyle = 'rgba(0,0,0,.3)'; c.fillRect(-190 + 12, -140 + 14, 380, 290); c.fillStyle = PAPER; c.fillRect(-190, -140, 380, 290);
+    c.save(); c.beginPath(); c.rect(-172, -122, 344, 210); c.clip(); group(c, d, -172, -122, 344, 210); c.restore();
+    txt(c, d.sessName || d.sess, 0, 122, 34, INK, { max: 330 });
+    tape(c, 0, -142, 140, -0.04);
+    c.restore();
+    header(c, T, T.night); footer(c, T.night ? '#F6EBD8' : INK);
+  }
+
+  // ── 3) لوح الطباشير: صورة الشلة عحبل الغسيل، ولوح النتيجة بخط الطبشورة، وشخصيتك قدّامه
+  function layoutBoard(c, d, T) {
+    sky(c, T, 560); wall(c, T, 520, 1640, { seed: 17 });
+    door(c, T, W - 190, 1340, 130, 280);
+    ground(c, T, 1640);
+    // حبل غسيل ومشابك
+    c.strokeStyle = INK; c.lineWidth = 5; c.beginPath(); c.moveTo(-10, 230); c.quadraticCurveTo(W / 2, 330, W + 10, 230); c.stroke();
+    c.save(); c.translate(W / 2 - 20, 520); c.rotate(0.04);
+    // صورة قديمة بحواف مسنّنة
+    const pw = 600, ph = 470;
+    c.fillStyle = 'rgba(0,0,0,.28)'; c.fillRect(-pw / 2 + 14, -ph / 2 + 16, pw, ph);
+    c.fillStyle = PAPER; c.beginPath(); const z = 14;
+    for (let x = -pw / 2; x <= pw / 2; x += z) c.lineTo(x, -ph / 2 + ((x / z) % 2 ? 6 : 0));
+    for (let y = -ph / 2; y <= ph / 2; y += z) c.lineTo(pw / 2 - ((y / z) % 2 ? 6 : 0), y);
+    for (let x = pw / 2; x >= -pw / 2; x -= z) c.lineTo(x, ph / 2 - ((x / z) % 2 ? 6 : 0));
+    for (let y = ph / 2; y >= -ph / 2; y -= z) c.lineTo(-pw / 2 + ((y / z) % 2 ? 6 : 0), y);
+    c.closePath(); c.fill();
+    c.save(); c.beginPath(); c.rect(-pw / 2 + 30, -ph / 2 + 30, pw - 60, ph - 110); c.clip(); group(c, d, -pw / 2 + 30, -ph / 2 + 30, pw - 60, ph - 110); c.restore();
+    txt(c, d.sessName || d.sess, 0, ph / 2 - 42, 40, INK, { font: '700 %px Plex, sans-serif', max: pw - 80 });
+    for (const xx of [-pw / 2 + 110, pw / 2 - 110]) { c.fillStyle = '#C98B4F'; c.strokeStyle = INK; c.lineWidth = 4; rr(c, xx - 14, -ph / 2 - 50, 28, 90, 8); c.fill(); c.stroke(); }
+    c.restore();
+    // اللوح
+    const bx = 90, by = 830, bw = 900, bh = 760;
+    c.fillStyle = INK; rr(c, bx + 12, by + 14, bw, bh, 18); c.fill();
+    c.fillStyle = '#9A6A42'; rr(c, bx, by, bw, bh, 18); c.fill(); c.lineWidth = 7; c.strokeStyle = INK; c.stroke();
+    c.fillStyle = T.board; c.fillRect(bx + 30, by + 30, bw - 60, bh - 60);
+    c.strokeStyle = 'rgba(255,255,255,.06)'; c.lineWidth = 30; for (let i = 0; i < 4; i++) { c.beginPath(); c.moveTo(bx + 60 + i * 200, by + 60); c.lineTo(bx + 220 + i * 200, by + bh - 70); c.stroke(); }
+    txt(c, 'نتيجة القعدة', W / 2, by + 95, 60, T.chalk, { max: 700 });
+    c.strokeStyle = T.chalk; c.lineWidth = 4; c.beginPath(); c.moveTo(W / 2 - 200, by + 140); c.quadraticCurveTo(W / 2, by + 152, W / 2 + 200, by + 138); c.stroke();
+    const rk = d.rank || []; let rows = rk.slice(0, 5); const mine = rk.find((r) => r.me); if (mine && !rows.includes(mine)) rows = rk.slice(0, 4).concat(mine);
+    const rh = 100;
+    rows.forEach((r, i) => {
+      const y = by + 210 + i * rh;
+      if (r.me) { c.strokeStyle = '#E8A317'; c.lineWidth = 6; c.beginPath(); c.ellipse(W / 2, y, 395, 46, -0.01, 0, 7); c.stroke(); }
+      txt(c, String(r.pos), bx + bw - 90, y + 4, 54, r.me ? '#E8A317' : T.chalk, { dir: 'ltr' });
+      headCircle(c, r, bx + bw - 180, y, 36);
+      txt(c, r.name, bx + bw - 236, y + 4, 46, T.chalk, { a: 'right', max: 400 });
+      txt(c, String(Math.round(r.pts * 100) / 100), bx + 110, y + 4, 50, r.me ? '#E8A317' : T.chalk, { dir: 'ltr' });
+    });
+    // شخصية صاحب الستوري قدّام اللوح
+    if (mine) dude(c, Object.assign({ seed: 3 }, mine), 175, 1745, 50, mine.pos === 1 ? 'cheer' : 'idle', false);
+    txt(c, d.name, W / 2 + 90, 1720, 72, T.night ? '#F6EBD8' : INK, { max: 640 });
+    txt(c, `${d.title} · ${ptsLine(d)}`, W / 2 + 90, 1795, 34, T.night ? '#E9DCC6' : '#5E5145', { font: '700 %px Plex, sans-serif', max: 640 });
+    header(c, T, T.night); footer(c, T.night ? '#D9C9B2' : '#5E5145');
+  }
+
   function render(cv, d, layout, theme) {
     const c = cv.getContext('2d'); const T = THEMES[theme] || THEMES.light;
     c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, W, H);
-    c.fillStyle = T.bg; c.fillRect(0, 0, W, H);
-    c.fillStyle = T.bg2; for (let y = 0; y < H; y += 40) for (let x = (y / 40) % 2 ? 20 : 0; x < W; x += 40) { c.beginPath(); c.arc(x, y, 3, 0, 7); c.fill(); }
-    if (layout === 'polaroid') layoutPolaroid(c, d, T); else if (layout === 'sticker') layoutSticker(c, d, T); else layoutCover(c, d, T);
-    header(c, T); footer(c, T);
+    if (layout === 'poster') layoutPoster(c, d, T); else if (layout === 'board') layoutBoard(c, d, T); else layoutPodium(c, d, T);
   }
   return { render };
 })();

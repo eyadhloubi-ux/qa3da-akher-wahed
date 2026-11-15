@@ -472,7 +472,7 @@
   $('#skipReveal').onclick = () => send({ t: 'skipReveal' });
 
   // ───── النتيجة النهائية ─────
-  let storyL = 'cover', storyT = 'light';
+  let storyL = 'podium', storyT = 'light';
   function renderFinal() {
     const r = S.room, rv = r.reveal; if (!rv) return;
     const key = r.seq + ':' + r.players.map((p) => p.photoVer + p.name).join(',') + (r.name || '');
@@ -491,7 +491,7 @@
     try { await document.fonts.load('800 80px Changa'); await document.fonts.load('80px Lalezar'); await document.fonts.load('700 40px Plex'); await document.fonts.load('600 40px Plex'); } catch (e) {}
     for (const im of [BRAND.chairImg(), BRAND.iconImg()]) if (!im.complete) await new Promise((ok) => { im.onload = ok; im.onerror = ok; setTimeout(ok, 1500); });
     const f = r.reveal.final.find((x) => x.id === p.id) || { pos: r.players.length, pts: 0, f: 0 };
-    STORY.render($('#storyCv'), { name: p.name, color: p.color, photo: D.photo(p.id), group: D.photo('__group'), sess: `${r.name} · ${r.type}`, sessName: r.name, crew: r.players.map((q) => ({ name: q.name, color: q.color, photo: D.photo(q.id) })), pos: f.pos, pts: f.pts, f: f.f, title: title(f.pos, p.gender, p.id), games: r.played.length }, storyL, storyT);
+    STORY.render($('#storyCv'), { name: p.name, color: p.color, photo: D.photo(p.id), group: D.photo('__group'), sess: `${r.name} · ${r.type}`, sessName: r.name, crew: r.players.map((q) => ({ id: q.id, name: q.name, color: q.color, photo: D.photo(q.id) })), rank: r.reveal.final.map((x) => { const q = r.players.find((y) => y.id === x.id); return q ? { id: q.id, name: q.name, color: q.color, photo: D.photo(q.id), pos: x.pos, pts: x.pts, me: q.id === p.id } : null; }).filter(Boolean), pos: f.pos, pts: f.pts, f: f.f, title: title(f.pos, p.gender, p.id), games: r.played.length }, storyL, storyT);
   }
   $('#dlStory').onclick = () => { $('#storyCv').toBlob(async (b) => { const file = new File([b], 'qa3da-akher-wahed.png', { type: 'image/png' }); if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: 'قعدة آخر واحد' }); return; } catch (e) {} } const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'qa3da-akher-wahed.png'; a.click(); }, 'image/png'); };
   $('#shareFriends').onclick = () => { if (navigator.share) navigator.share({ title: 'قعدة', text: 'تعوا العبوا معنا 👇', url: IG }).catch(() => {}); else window.open(IG, '_blank'); };
